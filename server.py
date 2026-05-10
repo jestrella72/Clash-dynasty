@@ -591,19 +591,15 @@ def action_attack(game, player_idx, attacker_iid, target_type, target_ref=None):
         if not target:
             return False, "Target not found"
         target_card = card_by_id(target["cardId"])
-        defender_atk = target_card.get("atk", 0)
-        # Clash — both characters deal their ATK to each other simultaneously
+        # Attacker deals damage to the target only — attacker does NOT take return damage
         target["currentHp"] -= atk
-        attacker["currentHp"] -= defender_atk
-        game["log"].append(f"Clash! {card['name']} ({atk} ATK) vs {target_card['name']} ({defender_atk} ATK).")
+        game["log"].append(f"{card['name']} ({atk} ATK) attacks {target_card['name']}!")
         if target["currentHp"] <= 0:
             op["field"].remove(target)
             op["trash"].append(target["cardId"])
-            game["log"].append(f"{target_card['name']} was trashed!")
-        if attacker["currentHp"] <= 0:
-            p["field"].remove(attacker)
-            p["trash"].append(attacker["cardId"])
-            game["log"].append(f"{card['name']} was trashed in the clash!")
+            game["log"].append(f"{target_card['name']} was destroyed and sent to Trash!")
+        else:
+            game["log"].append(f"{target_card['name']} has {target['currentHp']} HP remaining.")
     elif target_type in ("field", "direct"):
         # Set pending attack — defender must block or take damage
         op_fc = game["fieldCards"][op_idx]
