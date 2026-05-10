@@ -602,19 +602,19 @@ def action_attack(game, player_idx, attacker_iid, target_type, target_ref=None):
             "targetName":    target_card["name"],
         }
         game["log"].append(f"Player {player_idx+1}'s {card['name']} attacks {target_card['name']}! Opponent may block with Storage Zone.")
-    elif target_type in ("field", "direct"):
-        # Set pending attack — defender must block or take damage
+    elif target_type == "field":
+        # Field card attack — defender blocks with storage or loses 1 life
         op_fc = game["fieldCards"][op_idx]
-        if target_type == "field" and not op_fc:
+        if not op_fc:
             return False, "Opponent has no field card"
         game["pendingAttack"] = {
             "attackerIid":  attacker_iid,
             "attackerPi":   player_idx,
             "attackerName": card["name"],
             "damage":       atk,
-            "targetType":   target_type,
+            "targetType":   "field",
         }
-        game["log"].append(f"Player {player_idx+1}'s {card['name']} attacks! Opponent may block with Storage Zone.")
+        game["log"].append(f"Player {player_idx+1}'s {card['name']} attacks the Field Card! Opponent may block with Storage Zone.")
     return True, "OK"
 
 def action_set_phase(game, player_idx, phase):

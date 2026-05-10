@@ -585,7 +585,7 @@ input, select { font-family: inherit; }
   <div class="rs"><h3>🃏 Deck Building</h3><ul><li>Max <strong>40 cards</strong> per deck.</li><li>Must be <strong>mono-element</strong> (e.g. Water only).</li><li>Dual-element characters (e.g. Water/Electricity) are allowed in their matching deck.</li></ul></div>
   <div class="rs"><h3>🗺️ Field Mat Zones</h3><ul><li><strong>Character Field</strong> — 4 characters max per player</li><li><strong>Slot</strong> — your element tokens (無極)</li><li><strong>Storage Zone</strong> — 4 cards max = your lives</li><li><strong>Field Card</strong> — bottom left of your mat</li><li><strong>Main Deck</strong> — bottom right of your mat</li><li><strong>Trash</strong> — destroyed/discarded cards (top right of Character Field)</li></ul></div>
   <div class="rs"><h3>🔄 Turn Phases</h3><ul><li><strong>Beginning:</strong> Draw 5 cards (turn 1 only). Gain 1 Element. Option to sacrifice Storage → take 1 life from opponent.</li><li><strong>Draw:</strong> Draw 1 card.</li><li><strong>Action:</strong> Play characters, events, triggers. Attack.</li><li><strong>Ending:</strong> End-of-Turn Field effects only.</li></ul></div>
-  <div class="rs"><h3>⚔️ Combat</h3><ul><li>Characters must be <strong>Charged</strong> to attack. They become <strong>Discharged</strong> after.</li><li>Can attack opponent's character, their Field Card, or directly.</li><li>At 0 HP → sent to <strong>Trash</strong>.</li></ul></div>
+  <div class="rs"><h3>⚔️ Combat</h3><ul><li>Characters must be <strong>Charged</strong> to attack. They become <strong>Discharged</strong> after.</li><li>Can attack a specific opponent character, or their Field Card.</li><li>Attacking a character: defender can block with Storage or let the character take the hit.</li><li>Attacking the Field Card: defender can block with Storage or lose 1 life.</li><li>Trashing a character does <strong>NOT</strong> cost the opponent a life.</li><li>At 0 HP → sent to <strong>Trash</strong>.</li></ul></div>
   <div class="rs"><h3>🏷️ Keywords</h3>
     <table class="kwt">
       <tr><th>Keyword</th><th>Meaning</th></tr>
@@ -1236,9 +1236,8 @@ function renderActions(myTurn, phase, me) {
 
   let h='';
   if(S.atkMode){
-    if(statusBar){ statusBar.style.display='block'; statusBar.textContent='⚔ Select target — click opponent character, or use buttons below'; }
+    if(statusBar){ statusBar.style.display='block'; statusBar.textContent='⚔ Select target — click an opponent\'s character to attack it, or attack their Field Card'; }
     h+=`<button class="ab cancel" onclick="cancelAtk()">✕ Cancel</button>`;
-    h+=`<button class="ab atk" onclick="atkDirect()">💥 Direct Attack</button>`;
     h+=`<button class="ab phase" onclick="clickFieldCard()" style="background:linear-gradient(135deg,#8a4a00,#4a2a00)">🏟 Attack Field Card</button>`;
   } else {
     if(statusBar) statusBar.style.display='none';
@@ -1413,11 +1412,7 @@ function atkTarget(iid){
   doAct({action:'attack',attackerIid:S.sel.iid,targetType:'character',targetRef:iid});
   S.atkMode=false; S.sel=null;
 }
-function atkDirect(){
-  if(!S.atkMode||!S.sel)return;
-  doAct({action:'attack',attackerIid:S.sel.iid,targetType:'direct'});
-  S.atkMode=false; S.sel=null;
-}
+
 function clickFieldCard(){
   if(S.atkMode&&S.sel){
     doAct({action:'attack',attackerIid:S.sel.iid,targetType:'field'});
