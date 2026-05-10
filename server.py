@@ -591,15 +591,17 @@ def action_attack(game, player_idx, attacker_iid, target_type, target_ref=None):
         if not target:
             return False, "Target not found"
         target_card = card_by_id(target["cardId"])
-        # Attacker deals damage to the target only — attacker does NOT take return damage
-        target["currentHp"] -= atk
-        game["log"].append(f"{card['name']} ({atk} ATK) attacks {target_card['name']}!")
-        if target["currentHp"] <= 0:
-            op["field"].remove(target)
-            op["trash"].append(target["cardId"])
-            game["log"].append(f"{target_card['name']} was destroyed and sent to Trash!")
-        else:
-            game["log"].append(f"{target_card['name']} has {target['currentHp']} HP remaining.")
+        # Set pendingAttack — defender can block with storage or let the character take the hit
+        game["pendingAttack"] = {
+            "attackerIid":   attacker_iid,
+            "attackerPi":    player_idx,
+            "attackerName":  card["name"],
+            "damage":        atk,
+            "targetType":    "character",
+            "targetRef":     target_ref,
+            "targetName":    target_card["name"],
+        }
+        game["log"].append(f"Player {player_idx+1}'s {card['name']} attacks {target_card['name']}! Opponent may block with Storage Zone.")
     elif target_type in ("field", "direct"):
         # Set pending attack — defender must block or take damage
         op_fc = game["fieldCards"][op_idx]
@@ -705,17 +707,33 @@ def action_resolve_attack(game, player_idx, block, storage_iid=None):
         else:
             game["log"].append(f"Player {defender_pi+1} blocked with {cd['name']} ({sc['currentHp']} HP left).")
     else:
-        # Take damage — reduce field card HP (field card is NEVER removed, just HP → 0 = loss)
-        fc = game["fieldCards"][defender_pi]
-        if fc:
-            fc["hp"] = max(0, fc["hp"] - 1)
-            defender["lives"] = fc["hp"]
+        if pa.get("targetType") == "character" and pa.get("targetRef"):
+            # Unblocked character attack — the target character takes the damage
+            target = next((c for c in defender["field"] if c["instanceId"] == pa["targetRef"]), None)
+            if target:
+                target["currentHp"] -= pa["damage"]
+                target_card = card_by_id(target["cardId"])
+                game["log"].append(f"{pa['attackerName']} deals {pa['damage']} damage to {target_card['name']}!")
+                if target["currentHp"] <= 0:
+                    defender["field"].remove(target)
+                    defender["trash"].append(target["cardId"])
+                    game["log"].append(f"{target_card['name']} was destroyed and sent to Trash!")
+                else:
+                    game["log"].append(f"{target_card['name']} has {target['currentHp']} HP remaining.")
+            else:
+                game["log"].append(f"Target character not found — attack missed.")
         else:
-            defender["lives"] = max(0, defender["lives"] - 1)
-        game["log"].append(f"Player {defender_pi+1} took damage! ({defender['lives']} lives remaining)")
-        if defender["lives"] <= 0:
-            game["winner"] = atk_pi
-            game["log"].append(f"Player {atk_pi+1} wins!")
+            # Direct / field attack — reduce defender's field card HP (never removed, HP 0 = loss)
+            fc = game["fieldCards"][defender_pi]
+            if fc:
+                fc["hp"] = max(0, fc["hp"] - 1)
+                defender["lives"] = fc["hp"]
+            else:
+                defender["lives"] = max(0, defender["lives"] - 1)
+            game["log"].append(f"Player {defender_pi+1} took damage! ({defender['lives']} lives remaining)")
+            if defender["lives"] <= 0:
+                game["winner"] = atk_pi
+                game["log"].append(f"Player {atk_pi+1} wins!")
 
     game["pendingAttack"] = None
     return True, "OK"

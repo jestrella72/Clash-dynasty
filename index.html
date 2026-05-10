@@ -1210,9 +1210,14 @@ function renderActions(myTurn, phase, me) {
   const pa=S.game?.pendingAttack;
   if(pa && pa.attackerPi!==S.pi){
     // I'm the defender
+    const isCharAtk = pa.targetType === 'character';
+    const atkMsg = isCharAtk
+      ? `⚔ ${pa.attackerName} is attacking your ${pa.targetName}! Block with a Storage card to protect it, or let it take ${pa.damage} damage.`
+      : `⚔ Incoming attack from ${pa.attackerName}! Block with a Storage card (click it) or take damage.`;
+    const passLabel = isCharAtk ? `💢 Let ${pa.targetName} take the hit` : `💢 Take Damage`;
     if(statusBar){statusBar.style.display='block';statusBar.style.color='#f88';
-      statusBar.textContent=`⚔ Incoming attack from ${pa.attackerName}! Block with a Storage card (click it) or take damage.`;}
-    bar.innerHTML=`<button class="ab atk" onclick="passDamage()">💢 Take Damage</button>
+      statusBar.textContent=atkMsg;}
+    bar.innerHTML=`<button class="ab atk" onclick="passDamage()">${passLabel}</button>
       <span style="font-size:.72rem;color:var(--text2);align-self:center">— or click a Storage card to block</span>`;
     return;
   }
