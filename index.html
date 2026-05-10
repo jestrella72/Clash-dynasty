@@ -1,0 +1,1422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Clash Dynasty TCG</title>
+<style>
+:root {
+  --bg: #0a0a14;
+  --bg2: #12121f;
+  --bg3: #1a1a2e;
+  --gold: #c9a227;
+  --gold2: #f0c040;
+  --red: #c0392b;
+  --blue: #2980b9;
+  --green: #27ae60;
+  --purple: #8e44ad;
+  --text: #e8e8f0;
+  --text2: #aaaacc;
+  --border: #2a2a4a;
+  --card-w: 72px;
+  --card-h: 100px;
+  --radius: 8px;
+  /* Element colors */
+  --el-water: #1a6aaa;
+  --el-fire:  #cc4411;
+  --el-earth: #7a6020;
+  --el-elec:  #c8a010;
+  --el-psych: #7a20aa;
+  --el-dark:  #3a1a5a;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; min-height: 100vh; overflow-x: hidden; }
+button { cursor: pointer; border: none; border-radius: var(--radius); font-family: inherit; transition: all 0.15s; }
+button:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
+button:disabled { opacity: 0.38; cursor: not-allowed; transform: none !important; }
+input, select { font-family: inherit; }
+
+/* ── SCREENS ── */
+.screen { display: none; min-height: 100vh; }
+.screen.active { display: flex; flex-direction: column; }
+
+/* ══ MENU ══════════════════════════════════════════════ */
+#menu {
+  align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at center, #1a0a3a 0%, #0a0a14 70%);
+  padding: 20px;
+}
+.logo h1 { font-size: clamp(2rem,6vw,3.2rem); font-weight: 900; letter-spacing: 4px; background: linear-gradient(135deg,#c9a227,#f0c040,#c9a227); -webkit-background-clip:text; -webkit-text-fill-color:transparent; text-align:center; }
+.logo .sub { font-size: clamp(1rem,3vw,1.5rem); color: var(--gold2); letter-spacing: 10px; text-align:center; margin-top: 4px; }
+.logo .ver { font-size: 0.75rem; color: var(--text2); text-align:center; margin-top: 8px; margin-bottom: 36px; }
+.mbtn { display:block; width:min(300px,90vw); padding:15px; margin:8px auto; font-size:1rem; font-weight:700; letter-spacing:1px; border-radius:12px; }
+.mbtn.primary { background:linear-gradient(135deg,#7b2ff7,#3a0a8a); color:#fff; border:2px solid #9b4fff; }
+.mbtn.secondary { background:linear-gradient(135deg,#1a3a6a,#0a1a3a); color:#fff; border:2px solid #3a6aaa; }
+.mbtn.ghost { background:transparent; color:var(--text2); border:1px solid var(--border); font-size:0.9rem; }
+
+/* ══ LOBBY ═════════════════════════════════════════════ */
+#lobby { align-items:center; justify-content:center; padding:20px; background:radial-gradient(ellipse at center,#0a1a3a,#0a0a14); }
+.lcard { background:var(--bg3); border:1px solid var(--border); border-radius:16px; padding:24px; width:min(420px,100%); }
+.lcard h2 { color:var(--gold); margin-bottom:18px; font-size:1.3rem; text-align:center; }
+.fg { margin-bottom:14px; }
+.fg label { display:block; font-size:0.8rem; color:var(--text2); margin-bottom:5px; text-transform:uppercase; letter-spacing:1px; }
+.fg input, .fg select { width:100%; padding:11px 13px; background:var(--bg2); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:0.95rem; }
+.fg select option { background:var(--bg2); }
+.abtn { width:100%; padding:13px; font-size:1rem; font-weight:700; border-radius:10px; margin-top:6px; }
+.abtn.create { background:linear-gradient(135deg,var(--purple),#5a0a9a); color:#fff; }
+.abtn.join { background:linear-gradient(135deg,var(--blue),#1a5a9a); color:#fff; }
+.abtn.back { background:transparent; color:var(--text2); border:1px solid var(--border); font-size:0.85rem; margin-top:4px; }
+.code-box { background:var(--bg2); border:2px dashed var(--gold); border-radius:10px; padding:14px; text-align:center; margin:14px 0; }
+.code-box .code { font-size:2.4rem; font-weight:900; letter-spacing:6px; color:var(--gold2); }
+.dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; }
+.dot.wait { background:#f39c12; animation:pulse 1.4s infinite; }
+.dot.ok { background:var(--green); }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
+
+/* ══ GAME BOARD ════════════════════════════════════════ */
+#game { flex-direction:column; height:100vh; overflow:hidden; }
+
+/* Header */
+.g-header { display:flex; align-items:center; justify-content:space-between; padding:5px 10px; background:var(--bg3); border-bottom:1px solid var(--border); flex-shrink:0; gap:6px; }
+.g-title { font-size:0.75rem; font-weight:900; color:var(--gold); letter-spacing:2px; white-space:nowrap; }
+.phases { display:flex; gap:3px; }
+.pp { padding:3px 8px; border-radius:20px; font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; background:var(--bg2); color:var(--text2); border:1px solid var(--border); cursor:pointer; }
+.pp.active { background:var(--gold); color:#000; }
+.turn-badge { background:var(--green); color:#000; font-size:0.6rem; font-weight:900; padding:2px 7px; border-radius:10px; white-space:nowrap; }
+.wait-badge { background:#444; color:var(--text2); font-size:0.6rem; font-weight:700; padding:2px 7px; border-radius:10px; }
+
+/* Player info strips */
+.pstrip { display:flex; align-items:center; gap:6px; padding:5px 10px; background:rgba(0,0,0,0.6); flex-shrink:0; }
+.pstrip .pn { font-size:0.75rem; font-weight:700; min-width:52px; }
+.pn.you { color:var(--green); }
+.pn.opp { color:var(--red); }
+.hearts { display:flex; gap:2px; }
+.hrt { font-size:0.9rem; line-height:1; }
+.hrt.on { color:var(--red); }
+.hrt.off { color:#333; }
+.epips { display:flex; gap:3px; flex:1; justify-content:center; flex-wrap:wrap; }
+.epip { width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.6rem; font-weight:900; border:1px solid rgba(255,255,255,.2); }
+.hcnt { font-size:0.75rem; color:var(--text2); }
+
+/* ── THE BOARD ── */
+.board { flex:1; display:flex; flex-direction:column; overflow:hidden; min-height:0; }
+
+/* ══ FIELD MAT — matches physical mat layout ══ */
+.mat {
+  flex:1; display:flex; flex-direction:column; min-height:0; position:relative;
+  background-size: cover; background-position: center;
+}
+
+/* Element-themed mat backgrounds — styled after physical card mats */
+.mat[data-el="Water"] {
+  background:
+    radial-gradient(ellipse 100% 55% at 50% 110%, rgba(0,180,255,0.18) 0%, transparent 70%),
+    radial-gradient(ellipse 70% 40% at 15% 20%, rgba(0,80,160,0.35) 0%, transparent 65%),
+    radial-gradient(ellipse 50% 30% at 85% 75%, rgba(0,60,140,0.3) 0%, transparent 60%),
+    linear-gradient(175deg, #020d18 0%, #040f22 25%, #051528 55%, #071b35 80%, #04101e 100%);
+  border: 1px solid rgba(0,120,220,0.15);
+}
+.mat[data-el="Fire"] {
+  background:
+    radial-gradient(ellipse 90% 50% at 50% 110%, rgba(255,80,0,0.25) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 40% at 10% 10%, rgba(200,50,0,0.3) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 90% 80%, rgba(180,60,10,0.25) 0%, transparent 55%),
+    linear-gradient(170deg, #120400 0%, #200800 25%, #2e0e04 55%, #1e0804 80%, #100300 100%);
+  border: 1px solid rgba(200,60,10,0.15);
+}
+.mat[data-el="Earth"] {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 105%, rgba(120,90,20,0.25) 0%, transparent 70%),
+    radial-gradient(ellipse 55% 35% at 20% 15%, rgba(90,70,15,0.3) 0%, transparent 60%),
+    radial-gradient(ellipse 45% 30% at 80% 85%, rgba(70,55,10,0.25) 0%, transparent 55%),
+    linear-gradient(172deg, #0a0a02 0%, #131004 25%, #1c1806 55%, #181404 80%, #0d0c02 100%);
+  border: 1px solid rgba(120,90,20,0.15);
+}
+.mat[data-el="Electricity"] {
+  background:
+    radial-gradient(ellipse 80% 45% at 50% 108%, rgba(220,180,0,0.22) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 35% at 15% 25%, rgba(180,140,0,0.25) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 25% at 85% 70%, rgba(30,120,200,0.2) 0%, transparent 55%),
+    linear-gradient(172deg, #04040c 0%, #08080e 25%, #0c0c16 55%, #0a0a12 80%, #060608 100%);
+  border: 1px solid rgba(200,160,0,0.15);
+}
+.mat[data-el="Psychic"] {
+  background:
+    radial-gradient(ellipse 90% 55% at 50% 108%, rgba(160,30,220,0.22) 0%, transparent 70%),
+    radial-gradient(ellipse 65% 40% at 10% 20%, rgba(120,20,180,0.3) 0%, transparent 65%),
+    radial-gradient(ellipse 45% 30% at 90% 80%, rgba(100,10,160,0.22) 0%, transparent 55%),
+    linear-gradient(172deg, #080212 0%, #0e0420 25%, #14062e 55%, #100424 80%, #080212 100%);
+  border: 1px solid rgba(140,20,200,0.15);
+}
+.mat[data-el="Dark"] {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 108%, rgba(80,10,110,0.3) 0%, transparent 70%),
+    radial-gradient(ellipse 55% 35% at 15% 20%, rgba(50,5,80,0.25) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 25% at 85% 75%, rgba(40,5,65,0.2) 0%, transparent 55%),
+    linear-gradient(172deg, #030208 0%, #06040c 25%, #09050e 55%, #08050c 80%, #030208 100%);
+  border: 1px solid rgba(80,10,110,0.2);
+}
+/* Default mat */
+.mat:not([data-el]) {
+  background: linear-gradient(180deg, #0a100a, #060d06);
+}
+
+/* Opponent mat flips vertically so layout mirrors physical */
+.mat.opp-mat { transform: scaleY(-1); }
+.mat.opp-mat .zone-lbl,
+.mat.opp-mat .char-field,
+.mat.opp-mat .trash-corner,
+.mat.opp-mat .bottom-row,
+.mat.opp-mat .card,
+.mat.opp-mat .storage-chip,
+.mat.opp-mat .storage-cards { transform: scaleY(-1); }
+
+/* CHARACTER FIELD area — top portion */
+.char-field-area {
+  flex: 1; display: flex; flex-direction: column; min-height: 0;
+  position: relative; padding: 4px 8px 2px;
+  border-bottom: 2px solid rgba(200,160,50,0.25);
+}
+
+.zone-lbl {
+  font-size: 0.54rem; text-transform: uppercase; letter-spacing: 1.5px;
+  color: rgba(200,170,80,0.6); text-align: center; padding: 1px 0;
+  font-weight: 700;
+}
+
+.char-field {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  gap: 6px; padding: 4px; flex-wrap: wrap; min-height: 80px;
+}
+
+/* Trash corner — top-right of CHARACTER FIELD (matching physical mat) */
+.trash-corner {
+  position: absolute; top: 2px; right: 4px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.trash-corner .zone-lbl { font-size: 0.44rem; letter-spacing: 1px; }
+.trash-mini {
+  width: 38px; height: 52px; border-radius: 5px;
+  background: rgba(0,0,0,0.5); border: 1px dashed rgba(255,255,255,0.2);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1px; cursor: default;
+}
+.trash-mini .tcnt { font-size: 0.85rem; font-weight: 900; color: rgba(255,255,255,0.5); }
+.trash-mini .tlbl { font-size: 0.38rem; color: rgba(255,255,255,0.3); }
+
+/* BOTTOM ROW — FIELD CARD | STORAGE ZONE | MAIN DECK */
+.bottom-row {
+  display: flex; align-items: stretch; flex-shrink: 0;
+  min-height: 80px;
+  border-top: 2px solid rgba(200,160,50,0.2);
+  background: rgba(0,0,0,0.35);
+}
+
+/* Field Card zone */
+.field-card-zone {
+  width: 58px; flex-shrink: 0; border-right: 1px solid rgba(200,160,50,0.2);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 4px; cursor: pointer;
+}
+.field-card-zone:hover { background: rgba(255,255,255,0.04); }
+.fc-display {
+  width: 44px; height: 62px; border-radius: 6px;
+  background: rgba(0,0,0,0.5); border: 1px dashed rgba(200,160,50,0.3);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-size: 0.42rem; color: rgba(255,255,255,0.35); text-align: center; padding: 2px;
+}
+
+/* Storage zone — center */
+.storage-zone {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 4px 8px;
+  transition: background 0.15s, box-shadow 0.15s;
+  border-radius: 6px;
+}
+.storage-zone.drag-over {
+  background: rgba(201,162,39,0.18);
+  box-shadow: inset 0 0 0 2px var(--gold), 0 0 16px rgba(201,162,39,0.4);
+}
+.storage-drop-hint {
+  display: none; font-size: .55rem; color: var(--gold2);
+  letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700;
+  pointer-events: none;
+}
+.storage-zone.drag-over .storage-drop-hint { display: block; }
+.storage-zone.drag-over .storage-cards { opacity: 0.4; }
+.storage-cards { display: flex; gap: 5px; justify-content: center; align-items: center; }
+.storage-chip {
+  width: 32px; height: 46px; border-radius: 5px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border: 2px solid; transition: all 0.2s; gap: 1px;
+}
+.storage-chip.alive {
+  background: linear-gradient(160deg, #6a0808 0%, #aa2020 40%, #7a0a0a 100%);
+  border-color: #dd4444;
+  box-shadow: 0 0 8px rgba(220,60,60,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+}
+.storage-chip.dead {
+  background: rgba(20,20,20,0.7);
+  border-color: #2a2a2a;
+}
+
+/* Deck zone */
+.deck-zone {
+  width: 58px; flex-shrink: 0; border-left: 1px solid rgba(200,160,50,0.2);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 4px; gap: 2px;
+}
+.deck-pile {
+  width: 42px; height: 58px; border-radius: 6px;
+  background: linear-gradient(135deg, #1a0a3a, #3a1a6a);
+  border: 2px solid var(--purple);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.75rem; font-weight: 900; color: var(--text2);
+}
+
+/* ── SLOT ROW (element tokens) ── */
+.slot-row {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 6px 10px; flex-shrink: 0;
+  background: rgba(0,0,0,0.7);
+  border-top: 1px solid rgba(200,160,50,0.2);
+  border-bottom: 1px solid rgba(200,160,50,0.2);
+}
+.slot-lbl {
+  font-size: 0.52rem; text-transform: uppercase; letter-spacing: 2px;
+  color: rgba(200,170,80,0.5); margin-right: 2px; font-weight: 700;
+}
+.slot-token {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.72rem; font-weight: 900;
+  border: 2px solid;
+  outline: 2px solid rgba(255,255,255,0.06);
+  outline-offset: 2px;
+  transition: all 0.2s;
+  position: relative; overflow: hidden;
+}
+.slot-token.active {
+  transform: scale(1.12);
+  box-shadow: 0 0 12px 3px currentColor, inset 0 0 5px rgba(255,255,255,0.15);
+  outline-color: rgba(255,255,255,0.2);
+}
+.slot-token.used {
+  opacity: 0.28;
+  border-color: #282828 !important;
+  outline-color: transparent;
+}
+
+/* Element token colors */
+.el-Water    { background: radial-gradient(circle,#1a5aaa,#0a2a5a); color:#5aaee0; border-color:#3a7acc !important; }
+.el-Fire     { background: radial-gradient(circle,#cc3a10,#6a1a04); color:#ff8a50; border-color:#cc4411 !important; }
+.el-Earth    { background: radial-gradient(circle,#7a5a18,#3a2a08); color:#c8a040; border-color:#9b7a20 !important; }
+.el-Electricity { background: radial-gradient(circle,#c8a010,#4a3a04); color:#ffe060; border-color:#e8c020 !important; }
+.el-Psychic  { background: radial-gradient(circle,#7a20aa,#3a0a5a); color:#c060e0; border-color:#9a30cc !important; }
+.el-Dark     { background: radial-gradient(circle,#3a1a5a,#1a0a2a); color:#8a50cc; border-color:#5a2a8a !important; }
+
+/* ── HAND ── */
+.hand-wrap { flex-shrink:0; background:var(--bg3); border-top:2px solid var(--border); padding:5px 8px; }
+.hand-scroll { display:flex; gap:5px; overflow-x:auto; padding-bottom:3px; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+.hand-scroll::-webkit-scrollbar { height:3px; }
+.hand-scroll::-webkit-scrollbar-thumb { background:var(--border); }
+
+/* ── ACTIONS ── */
+.act-bar { display:flex; gap:5px; padding:5px 10px; background:var(--bg3); border-top:1px solid var(--border); flex-shrink:0; flex-wrap:wrap; justify-content:center; }
+.ab { padding:7px 12px; font-size:0.72rem; font-weight:700; letter-spacing:.3px; border-radius:7px; }
+.ab.atk { background:linear-gradient(135deg,#c0392b,#7a0a0a); color:#fff; }
+.ab.phase { background:linear-gradient(135deg,#2980b9,#0a3a6a); color:#fff; }
+.ab.end { background:linear-gradient(135deg,#555,#222); color:#fff; }
+.ab.sac { background:linear-gradient(135deg,#8a6000,#4a3000); color:var(--gold2); border:1px solid var(--gold); }
+.ab.play { background:linear-gradient(135deg,#27ae60,#0a5a1a); color:#fff; }
+.ab.cancel { background:transparent; color:var(--text2); border:1px solid var(--border); }
+
+/* ── LOG ── */
+.log { max-height:48px; overflow-y:auto; padding:3px 10px; font-size:0.67rem; color:var(--text2); background:rgba(0,0,0,.4); flex-shrink:0; }
+.log-l { padding:1px 0; border-bottom:1px solid rgba(255,255,255,.04); }
+.log-l:last-child { color:var(--text); }
+
+/* ── CARD ── */
+.card {
+  width:var(--card-w); min-width:var(--card-w); height:var(--card-h);
+  border-radius:var(--radius); border:2px solid rgba(255,255,255,.18);
+  cursor:pointer; position:relative; overflow:hidden;
+  display:flex; flex-direction:column; transition:all 0.18s; flex-shrink:0;
+}
+.card:hover { transform:translateY(-5px) scale(1.06); border-color:var(--gold); z-index:15; }
+.card.sel { border-color:var(--gold2); box-shadow:0 0 14px var(--gold2); transform:translateY(-7px); z-index:20; }
+.card.disc { filter:brightness(.35) saturate(.15) grayscale(.5); }
+.card.disc::after {
+  content:'WAIT'; position:absolute; bottom:2px; left:0; right:0;
+  text-align:center; font-size:.38rem; font-weight:900; color:rgba(255,120,120,.9);
+  letter-spacing:1px; z-index:10;
+}
+.card-img { width:100%; height:100%; object-fit:cover; display:block; position:absolute; top:0; left:0; z-index:0; }
+.card-overlay { position:absolute; inset:0; z-index:1; pointer-events:none;
+  background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0.15) 70%); }
+.card-banner { font-size:0.42rem; text-transform:uppercase; letter-spacing:.8px; padding:2px 3px; text-align:center; font-weight:700; background:rgba(0,0,0,.75); position:relative; z-index:2; }
+.card-art { flex:1; display:flex; align-items:center; justify-content:center; font-size:1.7rem; background:rgba(0,0,0,.25); position:relative; z-index:2; }
+.card-name { font-size:0.48rem; font-weight:700; text-align:center; padding:2px; background:rgba(0,0,0,.85); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; position:relative; z-index:2; }
+.card-stats { display:flex; justify-content:space-between; padding:1px 3px; background:rgba(0,0,0,.92); font-size:0.48rem; position:relative; z-index:2; }
+.c-cost { position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:rgba(0,0,0,.9); border:1.5px solid var(--gold); display:flex; align-items:center; justify-content:center; font-size:0.5rem; font-weight:900; color:var(--gold2); z-index:3; }
+.hp-bar { position:absolute; bottom:18px; left:2px; right:2px; height:3px; background:#333; border-radius:2px; z-index:3; }
+.hp-fill { height:100%; border-radius:2px; transition:width .3s; }
+.hp-fill.hi { background:var(--green); }
+.hp-fill.mid { background:#f39c12; }
+.hp-fill.lo { background:var(--red); }
+.card.opp { cursor:default; }
+.card.opp:hover { transform:none; border-color:rgba(255,255,255,.18); }
+.card.tgt { cursor:crosshair; border-color:var(--red) !important; animation:tgtpulse .8s infinite alternate; }
+.card.tgt:hover { transform:translateY(-4px); box-shadow:0 0 12px var(--red); }
+@keyframes tgtpulse { from{box-shadow:0 0 4px var(--red)}to{box-shadow:0 0 14px var(--red)} }
+.card-back { width:var(--card-w); min-width:var(--card-w); height:var(--card-h); border-radius:var(--radius); background:linear-gradient(135deg,#1a0a3a,#3a1a6a); border:2px solid var(--purple); display:flex; align-items:center; justify-content:center; font-size:0.6rem; color:var(--text2); text-align:center; flex-shrink:0; }
+.empty-field { color:var(--text2); font-size:0.68rem; opacity:.5; }
+
+/* ══ OVERLAYS ══════════════════════════════════════════ */
+.ov { position:fixed; inset:0; background:rgba(0,0,0,.88); display:none; align-items:center; justify-content:center; z-index:100; padding:14px; }
+.ov.show { display:flex; }
+.ovc { background:var(--bg3); border:1px solid var(--border); border-radius:14px; padding:18px; width:min(360px,100%); }
+.ovc h3 { color:var(--gold); margin-bottom:10px; font-size:1.1rem; }
+.xbtn { float:right; background:transparent; color:var(--text2); font-size:1.1rem; padding:0; }
+.cd-row { display:flex; gap:14px; margin-bottom:10px; }
+.cd-art { width:90px; height:126px; border-radius:var(--radius); overflow:hidden; display:flex; align-items:center; justify-content:center; font-size:2.3rem; border:2px solid var(--border); flex-shrink:0; position:relative; }
+.cd-art img { width:100%; height:100%; object-fit:cover; position:absolute; inset:0; }
+.cd-art .cd-art-fallback { position:absolute; z-index:1; }
+.cd-info { flex:1; }
+.kwtag { display:inline-block; padding:1px 7px; border-radius:8px; font-weight:700; font-size:0.65rem; margin:2px 2px 2px 0; }
+.efx { font-size:0.78rem; color:var(--text2); line-height:1.5; background:var(--bg2); padding:9px; border-radius:7px; }
+.ov-btns { display:flex; gap:7px; justify-content:flex-end; margin-top:10px; }
+
+/* Win */
+.win-box { text-align:center; }
+.win-box h2 { font-size:2.5rem; margin-bottom:6px; }
+.win-box p { font-size:1rem; color:var(--text2); margin-bottom:20px; }
+
+/* ══ RULES ═════════════════════════════════════════════ */
+#rules { padding:16px; overflow-y:auto; }
+.r-back { padding:9px 18px; background:transparent; color:var(--gold); border:1px solid var(--gold); border-radius:7px; margin-bottom:16px; }
+.rs { background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:12px; }
+.rs h3 { color:var(--gold); margin-bottom:8px; font-size:.95rem; }
+.rs p, .rs li { font-size:.82rem; color:var(--text2); line-height:1.6; margin-bottom:3px; }
+.rs ul { padding-left:16px; }
+.kwt { width:100%; border-collapse:collapse; font-size:.78rem; }
+.kwt th { color:var(--gold); padding:5px 7px; text-align:left; border-bottom:1px solid var(--border); }
+.kwt td { padding:4px 7px; border-bottom:1px solid rgba(255,255,255,.05); vertical-align:top; }
+
+/* ── TOAST ── */
+.toast { position:fixed; bottom:130px; left:50%; transform:translateX(-50%); background:#222; color:#fff; padding:7px 15px; border-radius:18px; font-size:0.78rem; z-index:300; pointer-events:none; border:1px solid #444; }
+
+@media(min-width:600px) { :root{--card-w:80px;--card-h:112px;} }
+@media(min-width:900px) { #game{max-width:800px;margin:0 auto;border-left:1px solid var(--border);border-right:1px solid var(--border);} }
+</style>
+</head>
+<body>
+
+<!-- ══ MENU ══════════════════════════════════════════════ -->
+<div id="menu" class="screen active">
+  <div class="logo" style="margin-bottom:0">
+    <h1>CLASH DYNASTY</h1>
+    <div class="sub">無 極</div>
+    <div class="ver">Trading Card Game — v2.0</div>
+  </div>
+  <button class="mbtn primary" onclick="showLobby('create')">⚔️  Create Game</button>
+  <button class="mbtn secondary" onclick="showLobby('join')">🔗  Join Game</button>
+  <button class="mbtn secondary" onclick="showLobby('solo')" style="background:linear-gradient(135deg,#1a5a1a,#0a3a0a);border-color:#3a9a3a">🤖  Solo Practice</button>
+  <button class="mbtn ghost" onclick="go('rules')">📖  Rules</button>
+</div>
+
+<!-- ══ LOBBY ══════════════════════════════════════════════ -->
+<div id="lobby" class="screen">
+  <div class="lcard" id="lcard"></div>
+</div>
+
+<!-- ══ GAME ═══════════════════════════════════════════════ -->
+<div id="game" class="screen">
+
+  <!-- Header -->
+  <div class="g-header">
+    <span class="g-title">CLASH DYNASTY</span>
+    <div class="phases">
+      <div class="pp" id="ph-beginning" onclick="clickPhase('beginning')">Begin</div>
+      <div class="pp" id="ph-draw"      onclick="clickPhase('draw')">Draw</div>
+      <div class="pp" id="ph-action"    onclick="clickPhase('action')">Action</div>
+      <div class="pp" id="ph-ending"    onclick="clickPhase('ending')">End</div>
+    </div>
+    <div id="turn-indicator"></div>
+    <button id="solo-switch-btn" onclick="switchSoloPlayer()" style="display:none;background:linear-gradient(135deg,#1a5a1a,#0a3a0a);color:#fff;border:1px solid #3a9a3a;padding:3px 8px;font-size:0.6rem;font-weight:700;border-radius:6px;white-space:nowrap">🔄 Switch Player</button>
+  </div>
+
+  <!-- Opponent info strip -->
+  <div class="pstrip">
+    <span class="pn opp">Opponent</span>
+    <div class="hearts" id="opp-hearts"></div>
+    <div class="epips"  id="opp-epips"></div>
+    <span class="hcnt"  id="opp-hcnt">✋ 5</span>
+  </div>
+
+  <!-- Board -->
+  <div class="board">
+
+    <!-- ── OPPONENT MAT (flipped so it mirrors the physical mat) ── -->
+    <div class="mat opp-mat" id="opp-mat" data-el="Water">
+      <div class="char-field-area">
+        <div class="zone-lbl">CHARACTER FIELD — 4 MAX</div>
+        <div class="char-field" id="opp-field"><span class="empty-field">— Empty Field —</span></div>
+        <!-- Trash corner top-right (matching physical mat) -->
+        <div class="trash-corner">
+          <div class="zone-lbl">TRASH</div>
+          <div class="trash-mini">
+            <span class="tcnt" id="opp-trash-cnt">0</span>
+            <span class="tlbl">cards</span>
+          </div>
+        </div>
+      </div>
+      <div class="bottom-row">
+        <div class="field-card-zone" onclick="clickFieldCard()">
+          <div class="zone-lbl">FIELD CARD</div>
+          <div class="fc-display" id="opp-fc-display">No<br>Field</div>
+        </div>
+        <div class="storage-zone">
+          <div class="zone-lbl">STORAGE ZONE — MAX 4</div>
+          <div class="storage-cards" id="opp-storage"></div>
+        </div>
+        <div class="deck-zone">
+          <div class="zone-lbl">DECK</div>
+          <div class="deck-pile" id="opp-deck-cnt">?</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SLOT ROW (shared element token bar) ── -->
+    <div class="slot-row" id="slot-row">
+      <span class="slot-lbl">SLOT</span>
+    </div>
+
+    <!-- ── MY MAT ── -->
+    <div class="mat my-mat" id="my-mat" data-el="Water">
+      <div class="char-field-area">
+        <div class="zone-lbl">CHARACTER FIELD — 4 MAX</div>
+        <div class="char-field" id="my-field"><span class="empty-field">— Empty Field —</span></div>
+      </div>
+      <div class="bottom-row">
+        <div class="field-card-zone" id="my-fc-zone" onclick="clickFieldCard()">
+          <div class="zone-lbl">FIELD CARD</div>
+          <div class="fc-display" id="my-fc-display">No<br>Field</div>
+        </div>
+        <div class="storage-zone" id="my-storage-zone"
+             ondragover="storageDragOver(event)"
+             ondragleave="storageDragLeave(event)"
+             ondrop="storageDrop(event)">
+          <div class="zone-lbl">STORAGE ZONE — MAX 4</div>
+          <div class="storage-cards" id="my-storage"></div>
+          <div class="storage-drop-hint" id="storage-drop-hint">Drop to Store</div>
+        </div>
+        <div class="deck-zone">
+          <div class="zone-lbl">MAIN DECK</div>
+          <div class="deck-pile" id="my-deck-count">40</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- My info strip -->
+  <div class="pstrip" style="border-top:1px solid var(--border)">
+    <span class="pn you">You</span>
+    <div class="hearts" id="my-hearts"></div>
+    <div class="epips"  id="my-epips"></div>
+    <span id="my-trash-info" style="font-size:0.7rem;color:var(--text2)"></span>
+  </div>
+
+  <!-- Status bar -->
+  <div id="act-status" style="text-align:center;font-size:0.72rem;color:var(--text2);padding:4px 10px;background:rgba(0,0,0,0.5);display:none"></div>
+
+  <!-- Actions -->
+  <div class="act-bar" id="act-bar"></div>
+
+  <!-- Hand -->
+  <div class="hand-wrap">
+    <div style="font-size:0.58rem;text-transform:uppercase;letter-spacing:1px;color:var(--text2);margin-bottom:3px">YOUR HAND</div>
+    <div class="hand-scroll" id="my-hand"></div>
+  </div>
+
+  <!-- Log -->
+  <div class="log" id="log"></div>
+</div>
+
+<!-- ══ RULES ═══════════════════════════════════════════ -->
+<div id="rules" class="screen" style="background:var(--bg)">
+  <button class="r-back" onclick="go('menu')">← Back</button>
+  <h2 style="color:var(--gold);margin-bottom:14px;font-size:1.3rem">Clash Dynasty — Rules</h2>
+  <div class="rs"><h3>🎯 Win Condition</h3><p>Reduce your opponent's lives to 0. Each player has <strong>4 lives</strong> (Storage Zone holds max 4 cards). When Storage is empty — you lose.</p></div>
+  <div class="rs"><h3>🃏 Deck Building</h3><ul><li>Max <strong>40 cards</strong> per deck.</li><li>Must be <strong>mono-element</strong> (e.g. Water only).</li><li>Dual-element characters (e.g. Water/Electricity) are allowed in their matching deck.</li></ul></div>
+  <div class="rs"><h3>🗺️ Field Mat Zones</h3><ul><li><strong>Character Field</strong> — 4 characters max per player</li><li><strong>Slot</strong> — your element tokens (無極)</li><li><strong>Storage Zone</strong> — 4 cards max = your lives</li><li><strong>Field Card</strong> — bottom left of your mat</li><li><strong>Main Deck</strong> — bottom right of your mat</li><li><strong>Trash</strong> — destroyed/discarded cards (top right of Character Field)</li></ul></div>
+  <div class="rs"><h3>🔄 Turn Phases</h3><ul><li><strong>Beginning:</strong> Draw 5 cards (turn 1 only). Gain 1 Element. Option to sacrifice Storage → take 1 life from opponent.</li><li><strong>Draw:</strong> Draw 1 card.</li><li><strong>Action:</strong> Play characters, events, triggers. Attack.</li><li><strong>Ending:</strong> End-of-Turn Field effects only.</li></ul></div>
+  <div class="rs"><h3>⚔️ Combat</h3><ul><li>Characters must be <strong>Charged</strong> to attack. They become <strong>Discharged</strong> after.</li><li>Can attack opponent's character, their Field Card, or directly.</li><li>At 0 HP → sent to <strong>Trash</strong>.</li></ul></div>
+  <div class="rs"><h3>🏷️ Keywords</h3>
+    <table class="kwt">
+      <tr><th>Keyword</th><th>Meaning</th></tr>
+      <tr><td><span class="kwtag" style="background:#2980b9">Defender</span></td><td>Discard from hand to block 1 attack.</td></tr>
+      <tr><td><span class="kwtag" style="background:#27ae60">When Deployed</span></td><td>Triggers once, immediately on play.</td></tr>
+      <tr><td><span class="kwtag" style="background:#e67e22">During Your Turn</span></td><td>Use any time during your turn.</td></tr>
+      <tr><td><span class="kwtag" style="background:#c0392b">On Attack</span></td><td>Triggers when this character attacks.</td></tr>
+      <tr><td><span class="kwtag" style="background:#8e44ad">On Sacrifice</span></td><td>Can attack turn it's played; goes to Storage at end of turn.</td></tr>
+      <tr><td><span class="kwtag" style="background:#c9a227;color:#000">On Lethal</span></td><td>Must attack Field Card; character auto-trashed based on cost.</td></tr>
+      <tr><td><span class="kwtag" style="background:#555">Any Time</span></td><td>Use during your OR opponent's turn.</td></tr>
+      <tr><td><span class="kwtag" style="background:#8e44ad">Only Once</span></td><td>Can only activate once per game.</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ══ CARD DETAIL OVERLAY ══════════════════════════════ -->
+<div class="ov" id="ov-card" onclick="closeOv(event)">
+  <div class="ovc" onclick="event.stopPropagation()">
+    <button class="xbtn" onclick="closeCardOv()">✕</button>
+    <h3 id="ov-name">Card</h3>
+    <div class="cd-row">
+      <div class="cd-art" id="ov-art"></div>
+      <div class="cd-info">
+        <div id="ov-type" style="font-size:.72rem;color:var(--text2);margin-bottom:5px"></div>
+        <div id="ov-kws" style="margin-bottom:7px"></div>
+        <div style="display:flex;gap:10px;font-size:.82rem;margin-bottom:6px">
+          <span id="ov-cost"></span><span id="ov-atk"></span><span id="ov-hp"></span>
+        </div>
+      </div>
+    </div>
+    <div class="efx" id="ov-eff"></div>
+    <div class="ov-btns">
+      <button class="ab play" id="ov-play" onclick="doPlaySelected()" style="display:none">▶ Play</button>
+      <button class="ab cancel" onclick="closeCardOv()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ WIN OVERLAY ═══════════════════════════════════════ -->
+<div class="ov" id="ov-win">
+  <div class="ovc win-box">
+    <h2 id="win-h">🏆</h2>
+    <p id="win-p"></p>
+    <button class="mbtn primary" onclick="location.reload()" style="margin:0 auto">Play Again</button>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+//  CARD IMAGE LOOKUP — Google Drive thumbnails
+//  Maps card name → Drive thumbnail URL
+// ════════════════════════════════════════════
+function thumb(id){ return `https://drive.google.com/thumbnail?id=${id}&sz=w400`; }
+
+const CARD_IMGS = {
+  // ── FIELD CARDS (additional) ──
+  'Sky Light City':        thumb('1AWP_r7ZK0RPgHrhfwEKlXndN76aZTAua'),
+  'The City of Rapture':   thumb('1hvE_1AffzOYii-OwtwH2M0M0PHJfu9ia'),
+  'The Fire Temple':       thumb('1vKtwGmI7-M6y9P0kA_tfCEs5LKDUmLD4'),
+  // ── PSYCHIC NEW ──
+  'Desire':            thumb('1SCtyWbUWWfFwVqO1WlsIKS1rYnFY39QO'),
+  'Malign':            thumb('1aaBoNEAIN7m43PJHHyxd7jXeSRt66FVV'),
+  'Lust':              thumb('1UXfJbP6nj4oOMto6NxsOdf1gTny0v4Nj'),
+  'Envy':              thumb('1GCgLqdu1dk8nXxOArX7l563icMmEZvdT'),
+  'Vicious':           thumb('1owgWJs4LK5LbeAatNoteFiDR8098WL4p'),
+  // ── EVENTS (nums 1-8) ──
+  'Clash':             thumb('1qvdi8RgGi8mYlEul7GdzadHBMgZVxNwu'),
+  'Cloud Rose':        thumb('17dUQ3O3ajsLIB4cmj4k33Js-GnRAx7Kp'),
+  'Reinforcements':    thumb('18fuS7DitRl8KUR7e9CUt-VnF7Rt0vZeg'),
+  'Super-Charge':      thumb('1YWOaIZmp9PBHstQkz648zv-eXI30K1jv'),
+  'Circuit Battery':   thumb('1gPjCcUwsafIR7iLzrrj4lamqe2Sc6qll'),
+  'Malfunction':       thumb('1RdFfwc0SWMpkQmF6BffRvvRR_qjyG571'),
+  'Telekinesis':       thumb('1loTpTE9b-xlZX1mFd2OhjOyUeMyaqnIn'),
+  "Assassin's Mark":   thumb('1wukeurh2QrWrTEsPWE2NDim8rkFE7xw6'),
+  // ── TRIGGERS (nums 9-16) ──
+  'Cold Fusion':       thumb('1C-dJjr_hy4qPnrIrNDQLk14JPu34EErP'),
+  'Barrier':           thumb('1TKNFFXHqT_Hz5s1aIhbSdEdQyoAIfguy'),
+  'Medic Aid':         thumb('1VcLklWXZ0d1RCC_u8ZssvwS8RyOWdmOr'),
+  'Weather Change':    thumb('1c9K_ZzlEV9p3tc-jiBuWMuSY7BCBd6PA'),
+  'Resurrection':      thumb('12p_gX6nxIudwbv5OxzYOp_nN1my6_wYR'),
+  'United':            thumb('1mokUjWX4ykznRzKms647fN27UZ_ooWIw'),
+  'Rage':              thumb('1gaFpCjMrMqnVb9bsZL1a4EEKxXUB5z_l'),
+  'Storage Space':     thumb('1uRzBhDJEgBXzDeGGTPFsaIZtyqllpImY'),
+  // ── FIELD CARDS ──
+  'The Cove':          thumb('1YzUAy9MlSOovrVbgO46sy6nBYBM1hz00'),
+  'The Ruins':         thumb('1CQv2gCHqK_RuY7UFfjjxmEr2_hTXrSbz'),
+  'The Throne Room':   thumb('1NwEcLG78_bNf7MnkD5l2qJT9DODV1ld0'),
+  'The Cementary':     thumb('1cWtev3HbfdB4LF4Aag0xAOBq6YF4Oq10'),
+  // ── PSYCHIC (nums 27-43) ──
+  'Wrath':             thumb('1j-uqRUDUPRiSDFicvqdOWrCOaw37nnOS'),
+  'Greed':             thumb('1nAXfC-U8rUhQUuP3JWYVfeCLfz4glNY9'),
+  'Gluttony':          thumb('10AI-NUnQjI8mqUeeI7KLUdxUU_RrpQbd'),
+  'Spite':             thumb('1QHrM3VDRcxyTMbAuWlxq61jSKDztFCtJ'),
+  'Fury':              thumb('1m9rvr3B35uyhzMf4OrJZkzlZf2QFRlS7'),
+  'Taboo':             thumb('1kAb_px4wYH1cd6AV2Qw62b4uOZH16SwG'),
+  'Pride':             thumb('1ByvwJp5WUvAAHF-YA_jOIpZG5pPZRSG_'),
+  'Malevolent':        thumb('1-aATCtT5TO_ywT1aN7YFOAzFn-wtVDOx'),
+  'Savage':            thumb('1RsmcO8R8EhFWhurKSCSJz1efiWUXE1QA'),
+  'Victorious':        thumb('1qaCffc1n2jqn-o5pd5JvQ-2RiXnrW2r0'),
+  'Rage (Psychic)':    thumb('1gQdvacAH7kCO8EDICynL5jvYPiUe-iab'),
+  'Malice':            thumb('1EXe-GanDBAG3Rm_lYbwS1MW3bCVQVukS'),
+  // ── MERCENARY (nums 45-57) ──
+  'Cain':              thumb('1ZPYFJZxaa0OETuaNmFquHHuKZKfcELiF'),
+  'Noah':              thumb('1823eVcREGwuyulpf6uLpN6zLVeCDBrAH'),
+  'Mary':              thumb('1LRU8OFZga8m05vAtlV16w8TbS-lww9Mo'),
+  'Abel':              thumb('1feoQ6PD91UJ44LfUXvBgCw2ODu9TcysL'),
+  'Aaron':             thumb('1RWC4bI6lKDrwOAiJ39CF1E3F1DrwCeRt'),
+  'Azrael':            thumb('1sjlJPB5BMm7CBOgbvf_BISx9jl9aoisA'),
+  'Gabriel':           thumb('1NjLDtmCT9yqeKxYlwWJJLa87m4nRgEWA'),
+  'Ariel':             thumb('1hm8B16OFvoqgZKczlXUt7Hmxwr7zXCzA'),
+  'Raziel':            thumb('1lqgLobZBCqquVizcbK7SOrSEdbUHf8TA'),
+  'Engel':             thumb('1Ilvy70IlPpFRAUoJNnii6DoSunY3vnX8'),
+  'Raphael':           thumb('1L3563yUl9gTh-dcZbav-xAH5OzyRjn9p'),
+  // ── LIGHTNING (nums 68-69) ──
+  'Saturn':            thumb('1m9kMirNs2DtZPahyVECCzxsPYGJSla2e'),
+  'Titan':             thumb('1XmxfHpdXSE2ht_xN2fzmxTXwVL3BIwwX'),
+  // ── ATLANTEAN — Water (nums 78-91) ──
+  'Gadeirus':          thumb('16vM991NgVsDzjFauDTE5GeSK0bYzoJuh'),
+  'Smoker':            thumb('1EpcjG5oYAzwWeHBDL8WczxA2SmO9aE4t'),
+  'Atlas':             thumb('1BOyZ9Ft8SnslTo9GFKkpA7ac0e8PVQe3'),
+  'Ampheres':          thumb('1MfVMpyi6BXwt9jrBdul9a5lNcTRdhDKZ'),
+  'Diaprepes':         thumb('1qGoLgvFfMtpXRMBIfCwZUV6URttM4YWw'),
+  'Azaes':             thumb('1BwpQTfkilWtlJ1zIAjrrzB0CEtemtDBK'),
+  'Mestor':            thumb('1QDBoa4yLMTVH58VJOxxdqFsRhYDOvzBf'),
+  'Makaira':           thumb('1YoqXsjdqPpVHd0eLwrGgVW_LA7NLBu5V'),
+  'Topo':              thumb('1AFFw8W5yQ9mLfojdBml38CUBK92hfEmL'),
+  'Cerdian':           thumb('1OmZslRmACGrDoMgOfucGXSsDmETzcc_j'),
+  'Ondine':            thumb('1-Q96y_a858Vnzw7aF6nEzeb1z39Nh4tt'),
+  'Cetea':             thumb('1ZqXUQfnycptlIJm4AUH-0QRaDs5F6uYZ'),
+  // ── HOLY KNIGHT — Earth (nums 93-97) ──
+  'Carth':             thumb('1xJDx9DwqvrBiK4De0GOcGpYzMyPdeA8r'),
+  'Heracles':          thumb('1sqti2795rfyAXUFoMUXNwIUzbn9uWSUZ'),
+  'Aion':              thumb('191fDWJ3p3LbZ5HYKiiphL0aVuVvoXyjI'),
+  'Hermes':            thumb('1OhCwmwTV2CmkElILrRS64tpuGt7xgI91'),
+  'Ares':              thumb('1Va5TLFg9XnVMF4tTmsqdP1spqj_4XZYh'),
+  // ── INFERNO — Fire (nums 109, 118, 119, 122) ──
+  'Napu':              thumb('1sZMmvxgM9l4n71_r0fBBSISIbgCwKfvR'),
+  'Komodo':            thumb('1qxorJk-dRf7W31WZHhGHrsgyy1sSxYXj'),
+  'Crow':              thumb('1TtgvFrkyavb4X8vRLNmUPD4Mv4b8v_eP'),
+  'Leo':               thumb('1jKP5oAVNaCG3IBQtLtyjlalrFPrYx5Py'),
+  // ── RAD — Dark (nums 125, 127, 130, 131, 133) ──
+  'Boron':             thumb('1G1kD-DcRBlDGIud_s1O3so8tIH_7uNky'),
+  'Neon':              thumb('1IdysfhHvQILhIjNsr6AqwTn-Ak4UeTeQ'),
+  'Silver':            thumb('1-T-PZ_0UdNnA2N1vgZAd_gtE-usk2maF'),
+  'Xenon':             thumb('1lok8aBzLiYaHeBohJOvmonQg01LeyS4e'),
+  'Nitro':             thumb('1tIkzV4DsXwvawCdKIR525bLUMud0_bU1'),
+};
+
+// ════════════════════════════════════════════
+//  CONFIG & STATE
+// ════════════════════════════════════════════
+const SRV = window.location.origin;
+let poll = null;
+let S = {
+  roomId:null, secret:null, pi:null,
+  game:null, cards:{},
+  sel:null,
+  atkMode:false,
+};
+// Solo practice mode
+let soloMode = false;
+let soloSecrets = null;
+// Store mode — click a hand card to store it
+let storeMode = false;
+
+// ════════════════════════════════════════════
+//  NAVIGATION
+// ════════════════════════════════════════════
+function go(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function showLobby(mode) {
+  go('lobby');
+  const c = document.getElementById('lcard');
+  const EO = ['Water','Fire','Earth','Electricity','Psychic','Dark'].map(e=>`<option value="${e}">${e}</option>`).join('');
+  if (mode==='create') {
+    c.innerHTML=`<h2>⚔️ Create Game</h2>
+      <div class="fg"><label>Your Element</label><select id="ce">${EO}</select></div>
+      <button class="abtn create" onclick="createGame()">Create Room</button>
+      <button class="abtn back" onclick="go('menu')">← Back</button>
+      <div id="ls" style="margin-top:14px"></div>`;
+  } else if(mode==='join') {
+    c.innerHTML=`<h2>🔗 Join Game</h2>
+      <div class="fg"><label>Room Code</label><input id="jc" type="text" placeholder="Enter code" maxlength="6" style="text-transform:uppercase;letter-spacing:3px;font-size:1.2rem;font-weight:700"></div>
+      <div class="fg"><label>Your Element</label><select id="je">${EO}</select></div>
+      <button class="abtn join" onclick="joinGame()">Join Room</button>
+      <button class="abtn back" onclick="go('menu')">← Back</button>
+      <div id="ls" style="margin-top:14px"></div>`;
+  } else {
+    c.innerHTML=`<h2>🤖 Solo Practice</h2>
+      <p style="font-size:.8rem;color:var(--text2);margin-bottom:14px">Play both sides to test your decks. Use the <strong style="color:var(--green)">Switch Player</strong> button during the game to take your opponent's turns.</p>
+      <div class="fg"><label>Player 1 Element</label><select id="se1">${EO}</select></div>
+      <div class="fg"><label>Player 2 Element</label><select id="se2">${EO}</select></div>
+      <button class="abtn create" style="background:linear-gradient(135deg,#1a5a1a,#0a3a0a)" onclick="startSolo()">▶ Start Solo Practice</button>
+      <button class="abtn back" onclick="go('menu')">← Back</button>
+      <div id="ls" style="margin-top:14px"></div>`;
+  }
+}
+
+// ════════════════════════════════════════════
+//  LOBBY ACTIONS
+// ════════════════════════════════════════════
+async function createGame() {
+  const el=document.getElementById('ce').value, ls=document.getElementById('ls');
+  ls.innerHTML='<span class="dot wait"></span> Creating room...';
+  try {
+    const r=await api('/create','POST',{element:el});
+    S.roomId=r.roomId; S.secret=r.secret; S.pi=0;
+    ls.innerHTML=`<div class="code-box">
+      <div style="font-size:.78rem;color:var(--text2);margin-bottom:3px">Share with your opponent:</div>
+      <div class="code">${r.roomId}</div>
+      <button onclick="navigator.clipboard.writeText('${r.roomId}').then(()=>toast('Copied!'))" style="background:var(--gold);color:#000;padding:3px 12px;border-radius:6px;font-size:.72rem;font-weight:700;margin-top:6px">Copy</button>
+    </div>
+    <div style="text-align:center;margin-top:10px"><span class="dot wait"></span><span style="font-size:.82rem;color:var(--text2)"> Waiting for opponent...</span></div>`;
+    await loadCards(); startPoll();
+  } catch(e){ ls.innerHTML=`<span style="color:var(--red)">Error: ${e.message}</span>`; }
+}
+async function joinGame() {
+  const code=document.getElementById('jc').value.trim().toUpperCase();
+  const el=document.getElementById('je').value;
+  const ls=document.getElementById('ls');
+  if(!code){ls.innerHTML='<span style="color:var(--red)">Enter a code</span>';return;}
+  ls.innerHTML='<span class="dot wait"></span> Joining...';
+  try {
+    const r=await api('/join','POST',{roomId:code,element:el});
+    S.roomId=r.roomId; S.secret=r.secret; S.pi=1;
+    ls.innerHTML='<span class="dot ok"></span> Joined! Loading game...';
+    await loadCards(); startPoll();
+  } catch(e){ ls.innerHTML=`<span style="color:var(--red)">Error: ${e.message}</span>`; }
+}
+
+async function startSolo() {
+  const el1=document.getElementById('se1').value;
+  const el2=document.getElementById('se2').value;
+  const ls=document.getElementById('ls');
+  ls.innerHTML='<span class="dot wait"></span> Starting...';
+  try {
+    const r=await fetch(SRV+'/solo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({element1:el1,element2:el2})});
+    if(!r.ok){ ls.innerHTML=`<span style="color:var(--red)">Server error ${r.status} — please <strong>restart server.py</strong> and refresh.</span>`; return; }
+    const d=await r.json();
+    if(!d.secrets){ ls.innerHTML=`<span style="color:var(--red)">Bad response from server — restart server.py.</span>`; return; }
+    soloMode=true;
+    soloSecrets=d.secrets;
+    S.roomId=d.roomId;
+    S.secret=soloSecrets['0'];
+    S.pi=0;
+    await loadCards();
+    go('game');
+    startPoll();
+  } catch(e){ ls.innerHTML=`<span style="color:var(--red)">Error: ${e.message}<br><small>Make sure server.py is running (restart it if needed).</small></span>`; }
+}
+function switchSoloPlayer() {
+  if(!soloMode)return;
+  const next=1-S.pi;
+  S.pi=next;
+  S.secret=soloSecrets[String(next)];
+  S.sel=null; S.atkMode=false;
+  renderGame();
+  toast(`Now controlling Player ${next+1}`);
+}
+
+// ════════════════════════════════════════════
+//  POLLING
+// ════════════════════════════════════════════
+async function loadCards() {
+  const cs=await api('/cards');
+  S.cards={}; cs.forEach(c=>S.cards[c.id]=c);
+}
+function startPoll() {
+  if(poll)clearInterval(poll);
+  poll=setInterval(doPoll,1500); doPoll();
+}
+async function doPoll() {
+  try {
+    const r=await api(`/state?room=${S.roomId}&secret=${S.secret}`);
+    S.game=r.game; S.pi=r.playerIndex;
+    if(S.game.started) go('game');
+    renderGame();
+    if(S.game.winner!=null) showWin(S.game.winner);
+  } catch(e){}
+}
+
+// ════════════════════════════════════════════
+//  ELEMENT → CSS class map
+// ════════════════════════════════════════════
+const EL_SYM = {Water:'元',Fire:'火',Earth:'土',Electricity:'雷',Psychic:'念',Dark:'闇'};
+const EL_CLS = {Water:'el-Water',Fire:'el-Fire',Earth:'el-Earth',Electricity:'el-Electricity',Psychic:'el-Psychic',Dark:'el-Dark'};
+// Element orb artwork images (Drive thumbnails)
+const EL_IMG = {
+  Water:       thumb('1mk70M5i_B5GtUpp5W1frGTM7DD-HWRdw'),
+  Fire:        thumb('14QIJ_0fp9EX9qnSvg6hYCQ9y35CiI-7B'),
+  Earth:       thumb('1k5kvW6AAqcY7bBI81ndzXtX_LZ-nuAJp'),
+  Electricity: thumb('1YNAjSiMraIbJWVRDvewR1j4AGc-4tJvz'),
+  Psychic:     thumb('11DTsIZnnmL_K5_5r_6Fj5gzaRtPqrxDw'),
+  Dark:        thumb('10sNjWAgQbVDa3pyRWPe46NN0U_aOg8Qo'),
+};
+
+// ════════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════════
+function renderGame() {
+  if(!S.game)return;
+  const g=S.game, me=g.players[S.pi], op=g.players[1-S.pi];
+  const myTurn=g.activePlayer===S.pi;
+
+  // Update mat element backgrounds
+  const myEl = me.element;
+  const opEl = op.element;
+  const myMat = document.getElementById('my-mat');
+  const opMat = document.getElementById('opp-mat');
+  if(myMat) myMat.setAttribute('data-el', myEl);
+  if(opMat) opMat.setAttribute('data-el', opEl);
+
+  // Solo mode switch button
+  const switchBtn=document.getElementById('solo-switch-btn');
+  if(switchBtn) switchBtn.style.display=soloMode?'block':'none';
+
+  // Phase pills
+  ['beginning','draw','action','ending'].forEach(ph=>{
+    const el=document.getElementById(`ph-${ph}`);
+    if(el){el.className='pp'+(g.phase===ph?' active':'');}
+  });
+
+  // Turn indicator
+  const soloLabel = soloMode ? ` (P${g.activePlayer+1})` : '';
+  document.getElementById('turn-indicator').innerHTML=myTurn
+    ?`<span class="turn-badge">YOUR TURN${soloLabel}</span>`
+    :`<span class="wait-badge">${soloMode?`P${g.activePlayer+1}'s Turn`:"Opponent's Turn"}</span>`;
+
+  // Hearts — max lives from field card maxHp
+  const myMax = g.fieldCards?.[S.pi]?.maxHp || 5;
+  const opMax = g.fieldCards?.[1-S.pi]?.maxHp || 5;
+  renderHearts('opp-hearts', op.lives, opMax);
+  renderHearts('my-hearts',  me.lives, myMax);
+
+  // Element pips
+  renderEpips('opp-epips', op.elements, op.element);
+  renderEpips('my-epips',  me.elements, me.element);
+
+  // Hand count + trash
+  document.getElementById('opp-hcnt').textContent=`✋ ${op.handCount??0}`;
+  document.getElementById('my-trash-info').textContent=`🗑 Trash: ${me.trash?.length??0}`;
+
+  // Slot row — shows all 6 element types, clickable to gain
+  renderSlots(me.elements, myTurn, me.gainedElementThisTurn);
+
+  // Fields
+  renderOppField(op.field||[]);
+  renderMyField(me.field||[]);
+
+  // Field cards (per-player)
+  renderFieldCard(g.fieldCards);
+
+  // Storage (actual stored cards)
+  renderStorage('opp-storage', op.storage||[], false);
+  renderStorage('my-storage',  me.storage||[], true);
+
+  // Deck counts
+  document.getElementById('my-deck-count').textContent=(me.deck?.length??0);
+  document.getElementById('opp-deck-cnt').textContent=(op.deck?.length??op.handCount??'?');
+
+  // Trash counts
+  document.getElementById('opp-trash-cnt').textContent=op.trash?.length??0;
+
+  // Hand
+  renderHand(me.hand||[]);
+
+  // Actions
+  renderActions(myTurn, g.phase, me);
+
+  // Log
+  renderLog(g.log||[]);
+}
+
+function renderHearts(id, count, maxLives) {
+  const el=document.getElementById(id); if(!el)return;
+  const max=maxLives||5;
+  let h='';
+  for(let i=0;i<max;i++) h+=`<span class="hrt ${i<count?'on':'off'}">♥</span>`;
+  el.innerHTML=h;
+}
+
+const ELEMENTS_ORDER=['Water','Fire','Earth','Electricity','Psychic','Dark'];
+
+function renderEpips(id, elements, element) {
+  const el=document.getElementById(id); if(!el)return;
+  // elements is now a dict {Water:2, Fire:0, ...}
+  if(typeof elements==='number'){
+    // legacy fallback
+    const sym=EL_SYM[element]||'?'; const cls=EL_CLS[element]||'';
+    let h=''; for(let i=0;i<Math.min(elements,10);i++) h+=`<div class="epip ${cls}">${sym}</div>`;
+    el.innerHTML=h; return;
+  }
+  let h='';
+  for(const etype of ELEMENTS_ORDER){
+    const count=(elements&&elements[etype])||0;
+    if(count===0) continue;
+    const sym=EL_SYM[etype]||'?'; const cls=EL_CLS[etype]||'';
+    const imgUrl=EL_IMG[etype]||'';
+    const show=Math.min(count,4);
+    for(let i=0;i<show;i++){
+      if(imgUrl){
+        h+=`<div class="epip ${cls}" style="padding:0;overflow:hidden;background:none;border:none" title="${etype}:${count}">
+          <img src="${imgUrl}" alt="${sym}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block" onerror="this.outerHTML='<span>${sym}</span>'">
+        </div>`;
+      } else {
+        h+=`<div class="epip ${cls}" title="${etype}:${count}">${sym}</div>`;
+      }
+    }
+    if(count>4) h+=`<span style="font-size:.45rem;color:var(--gold2);font-weight:900;align-self:center">+${count-4}</span>`;
+  }
+  if(!h) h='<span style="font-size:.5rem;color:rgba(255,255,255,.3)">0</span>';
+  el.innerHTML=h;
+}
+
+function renderSlots(elements, myTurn, gainedElement) {
+  const el=document.getElementById('slot-row'); if(!el)return;
+  let h='<span class="slot-lbl">SLOT</span>';
+  for(const etype of ELEMENTS_ORDER){
+    const count=(elements&&elements[etype])||0;
+    const canGain=myTurn&&!gainedElement;
+    const imgUrl=EL_IMG[etype]||'';
+    const sym=EL_SYM[etype]||'?';
+    const cls=EL_CLS[etype]||'';
+    // Active = has elements of this type. When canGain, never dim to 'used' — all 6 are selectable.
+    const tokenState = count>0 ? 'active' : (canGain ? '' : 'used');
+    const imgFilter  = count>0 ? '' : (canGain ? 'filter:grayscale(0.2) brightness(0.6)' : 'filter:grayscale(0.9) brightness(0.28)');
+    h+=`<div class="slot-token ${cls} ${tokenState}"
+      title="${etype}: ${count}${canGain?' — click to gain 1':''}${count>0?' — right-click to reset':''}"
+      style="position:relative;overflow:visible;${canGain?'cursor:pointer':'cursor:default'};${canGain?'filter:drop-shadow(0 0 5px gold)':''}"
+      onclick="${canGain?`gainElement('${etype}')`:''}"
+      oncontextmenu="event.preventDefault();${count>0?`resetElement('${etype}')`:''}" >
+      ${imgUrl
+        ?`<img src="${imgUrl}" alt="${sym}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;${imgFilter}" onerror="this.outerHTML='<span style=\\'font-size:.75rem\\'>${sym}</span>'">`
+        :`<span style="font-size:.75rem">${sym}</span>`}
+      ${count>0?`<span style="position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.9);color:#ffe060;font-size:.44rem;font-weight:900;border-radius:4px;padding:0 3px;min-width:14px;text-align:center;pointer-events:none;white-space:nowrap">${count}</span>`:''}
+    </div>`;
+  }
+  h+='<span style="font-size:.42rem;color:rgba(200,160,50,.4);margin-left:4px;align-self:center">click=gain<br>R-click=reset</span>';
+  el.innerHTML=h;
+}
+
+function renderStorage(id, storage, isMe) {
+  const el=document.getElementById(id); if(!el)return;
+  if(!storage||!storage.length){
+    el.innerHTML='<span style="font-size:.55rem;color:rgba(255,255,255,.3);font-style:italic">Empty</span>';
+    return;
+  }
+  el.innerHTML=storage.map(inst=>{
+    const d=S.cards[inst.cardId]||{name:inst.cardId,color:'#333',art:'?'};
+    const imgUrl=CARD_IMGS[d.name]||'';
+    const canBlock = isMe && S.game?.pendingAttack && S.game.pendingAttack.attackerPi !== S.pi;
+    return `<div class="storage-chip alive" title="${d.name} ❤${inst.currentHp}"
+      style="background:${d.color||'#8a0a0a'};cursor:${canBlock?'pointer':'default'};position:relative;overflow:hidden;${canBlock?'border-color:#ffe060;box-shadow:0 0 8px rgba(255,220,0,.6)':''}"
+      onclick="${canBlock?`blockWithStorage('${inst.instanceId}')`:''}" >
+      ${imgUrl?`<img src="${imgUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.65" onerror="this.style.display='none'">`:'' }
+      <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:1px">
+        <div style="font-size:.38rem;font-weight:700;color:#fff;text-align:center;line-height:1.1;white-space:nowrap;overflow:hidden;max-width:30px;text-overflow:ellipsis">${d.name.slice(0,7)}</div>
+        <div style="font-size:.5rem;color:#f88">❤${inst.currentHp}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── CARD HTML — supports Drive images ──
+function cardHTML(cardId, inst, opts={}) {
+  const d=S.cards[cardId]||{name:cardId,type:'?',art:'?',color:'#333',cost:0};
+  const charged=inst?inst.charged:true;
+  const justDeployed=inst?!!inst.justDeployed:false;
+  const maxHp=d.hp??1, curHp=inst?inst.currentHp:maxHp;
+  const pct=Math.max(0,(curHp/maxHp)*100);
+  const hpCls=pct>60?'hi':pct>25?'mid':'lo';
+  const iid=inst?inst.instanceId:null;
+  const cls=['card',
+    opts.opp?'opp':'',
+    !charged&&inst?'disc':'',   // disc only when truly discharged (attacked)
+    opts.sel?'sel':'',
+    opts.tgt?'tgt':''
+  ].filter(Boolean).join(' ');
+  const click=opts.click?`onclick="${opts.click}('${iid||cardId}')"`:'' ;
+  const imgUrl = CARD_IMGS[d.name] || '';
+  const imgTag = imgUrl ? `<img class="card-img" src="${imgUrl}" alt="${d.name}" onerror="this.style.display='none'">` : '';
+  const artContent = imgUrl ? '' : `<div class="card-art">${d.art||'?'}</div>`;
+  // justDeployed: show a green "NEW" badge — character looks ready but can't attack this turn
+  const newBadge = justDeployed ? `<div style="position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:0.38rem;font-weight:900;letter-spacing:1px;color:#0f0;text-shadow:0 0 4px #0f0;pointer-events:none;z-index:10">NEW</div>` : '';
+
+  const overlay = imgUrl ? `<div class="card-overlay"></div>` : '';
+  return `<div class="${cls}" style="background:${d.color||'#333'}" ${click} title="${d.name}">
+    ${imgTag}
+    ${overlay}
+    <div class="c-cost">${d.cost}</div>
+    <div class="card-banner">${d.subtype||d.type}</div>
+    ${artContent}
+    <div class="card-name">${d.name}</div>
+    ${d.type==='Character'&&inst?`
+      <div class="hp-bar"><div class="hp-fill ${hpCls}" style="width:${pct}%"></div></div>
+      <div class="card-stats"><span>⚔${d.atk??0}</span><span>❤${curHp}</span></div>`:''}
+    ${newBadge}
+  </div>`;
+}
+
+function renderOppField(field) {
+  const el=document.getElementById('opp-field'); if(!el)return;
+  if(!field.length){el.innerHTML='<span class="empty-field">— Empty Field —</span>';return;}
+  const canAtk=S.atkMode&&S.sel;
+  el.innerHTML=field.map(inst=>cardHTML(inst.cardId,inst,{
+    opp:true, tgt:canAtk, click:canAtk?'atkTarget':'showOppCard'
+  })).join('');
+}
+
+function renderMyField(field) {
+  const el=document.getElementById('my-field'); if(!el)return;
+  if(!field.length){el.innerHTML='<span class="empty-field">— Empty Field —</span>';return;}
+  const myTurn=S.game.activePlayer===S.pi;
+  el.innerHTML=field.map(inst=>cardHTML(inst.cardId,inst,{
+    sel:S.sel?.iid===inst.instanceId,
+    click:myTurn?'selField':null
+  })).join('');
+}
+
+function renderOneFc(id, fc) {
+  const el=document.getElementById(id); if(!el)return;
+  if(!fc){
+    el.innerHTML='No<br>Field';
+    el.style.cssText='background:rgba(0,0,0,0.3);border:1px dashed rgba(200,160,50,0.3);';
+    return;
+  }
+  const d=S.cards[fc.cardId];
+  if(!d){el.innerHTML='?';return;}
+  const imgUrl = CARD_IMGS[d.name]||'';
+  const hp = fc.hp ?? 4;
+  el.style.background = d.color||'#333';
+  el.style.border = `2px solid ${fc.charged?'var(--gold)':'#555'}`;
+  el.style.position = 'relative';
+  el.style.overflow = 'hidden';
+  el.innerHTML=`
+    ${imgUrl?`<img src="${imgUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:4px" onerror="this.style.display='none'">`:''}
+    <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.95) 0%,rgba(0,0,0,.4) 60%,rgba(0,0,0,.1) 100%);border-radius:4px"></div>
+    ${imgUrl?'':d.art?`<div style="position:relative;z-index:1;font-size:1.3rem;flex:1;display:flex;align-items:center;justify-content:center">${d.art}</div>`:''}
+    <div style="position:absolute;bottom:2px;left:0;right:0;z-index:2;text-align:center;padding:1px 2px">
+      <div style="font-size:.42rem;font-weight:700;color:var(--gold);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name}</div>
+      <div style="font-size:.38rem;color:${fc.charged?'#ffe08a':'#888'}">${fc.charged?'⚡ Ready':'💤 Tired'} ❤${hp}</div>
+    </div>`;
+}
+function renderFieldCard(fieldCards) {
+  if(!fieldCards) fieldCards=[null,null];
+  renderOneFc('my-fc-display',  fieldCards[S.pi]);
+  renderOneFc('opp-fc-display', fieldCards[1-S.pi]);
+}
+
+function renderHand(hand) {
+  const el=document.getElementById('my-hand'); if(!el)return;
+  if(!hand.length){el.innerHTML='<span style="color:var(--text2);font-size:.72rem;padding:8px">Empty hand</span>';return;}
+  el.innerHTML=hand.map(cid=>{
+    const isSel=S.sel?.cardId===cid&&S.sel?.source==='hand';
+    const myTurn=S.game&&S.game.activePlayer===S.pi;
+    const draggable=myTurn?'draggable="true" ondragstart="handDragStart(event,\''+cid+'\')"':'';
+    return cardHTML(cid,null,{sel:isSel,click:'selHand'}).replace('<div class="card','<div '+draggable+' class="card');
+  }).join('');
+}
+
+function renderActions(myTurn, phase, me) {
+  const bar=document.getElementById('act-bar');
+  const statusBar=document.getElementById('act-status');
+  if(!bar)return;
+
+  // ── Pending attack: defender must block or take damage ──
+  const pa=S.game?.pendingAttack;
+  if(pa && pa.attackerPi!==S.pi){
+    // I'm the defender
+    if(statusBar){statusBar.style.display='block';statusBar.style.color='#f88';
+      statusBar.textContent=`⚔ Incoming attack from ${pa.attackerName}! Block with a Storage card (click it) or take damage.`;}
+    bar.innerHTML=`<button class="ab atk" onclick="passDamage()">💢 Take Damage</button>
+      <span style="font-size:.72rem;color:var(--text2);align-self:center">— or click a Storage card to block</span>`;
+    return;
+  }
+  if(pa && pa.attackerPi===S.pi){
+    // I'm the attacker, waiting for opponent to respond
+    if(statusBar){statusBar.style.display='block';statusBar.textContent='⏳ Waiting for opponent to block or take damage...';}
+    bar.innerHTML='<span style="font-size:.78rem;color:var(--text2)">⏳ Opponent deciding...</span>';
+    return;
+  }
+
+  if(!myTurn){
+    bar.innerHTML='<span style="font-size:.78rem;color:var(--text2)">⏳ Opponent\'s turn...</span>';
+    if(statusBar) statusBar.style.display='none';
+    return;
+  }
+
+  let h='';
+  if(S.atkMode){
+    if(statusBar){ statusBar.style.display='block'; statusBar.textContent='⚔ Select target — click opponent character, or use buttons below'; }
+    h+=`<button class="ab cancel" onclick="cancelAtk()">✕ Cancel</button>`;
+    h+=`<button class="ab atk" onclick="atkDirect()">💥 Direct Attack</button>`;
+    h+=`<button class="ab phase" onclick="clickFieldCard()" style="background:linear-gradient(135deg,#8a4a00,#4a2a00)">🏟 Attack Field Card</button>`;
+  } else {
+    if(statusBar) statusBar.style.display='none';
+    // Store button available at ANY time during your turn (max 1 + card-effect extras)
+    const extraStores = me.extraStores||0;
+    const maxStores = 1 + extraStores;
+    const storesLeft = maxStores - (me.storesThisTurn||0);
+    if(storesLeft>0 && phase!=='ending'){
+      const storeLbl = storeMode?'✕ Cancel Store':'📦 Store Card';
+      const storeStyle = storeMode?'background:linear-gradient(135deg,#555,#222)':'';
+      const storeInfo = extraStores>0 ? `(${storesLeft} left, card effect)` : '';
+      h+=`<button class="ab sac" style="${storeStyle}" onclick="toggleStoreMode()">${storeLbl}${storeInfo?` ${storeInfo}`:''}</button>`;
+    }
+    if(phase==='beginning'){
+      h+=`<button class="ab phase" onclick="setPhase('draw')">→ Draw Phase</button>`;
+    } else if(phase==='draw'){
+      // P1 turn 1: show peeked card instead of "drew a card"
+      if(S.pi===0 && S.game.turn===1 && S.game.peekedCard){
+        const pk=S.cards[S.game.peekedCard];
+        h+=`<div style="font-size:.72rem;color:#ffe060;padding:4px 8px;background:rgba(0,0,0,.5);border-radius:6px;border:1px solid rgba(255,220,0,.3)">
+          👁 Top of deck: <strong>${pk?pk.name:S.game.peekedCard}</strong>${pk?' ('+pk.type+')':''}
+        </div>`;
+      }
+      h+=`<button class="ab phase" onclick="setPhase('action')">→ Action Phase</button>`;
+    } else if(phase==='action'){
+      if(S.sel?.source==='hand'){
+        const d=S.cards[S.sel.cardId];
+        const elems=me.elements||{};
+        let canPlay=true; let costLabel=''; let costTitle='';
+        const costEls=d?.cost_elements||{};
+        if(Object.keys(costEls).length>0){
+          for(const[et,qty] of Object.entries(costEls)){
+            const have=elems[et]||0;
+            if(have<qty) canPlay=false;
+            costLabel+=`${qty}${EL_SYM[et]||et} `;
+          }
+          costTitle=canPlay?'':'Not enough elements';
+        } else {
+          const total=Object.values(elems).reduce((a,b)=>a+b,0);
+          const need=d?.cost||0; const elType=d?.element||'Any';
+          if(elType!=='Any'&&elType!=='Mercenary'){
+            const have=elems[elType]||0;
+            canPlay=have>=need;
+            costLabel=`${need}${EL_SYM[elType]||elType}`;
+            costTitle=canPlay?'':(`Need ${need} ${elType}, have ${have}`);
+          } else {
+            canPlay=total>=need;
+            costLabel=need;
+            costTitle=canPlay?'':(`Need ${need} elements, have ${total}`);
+          }
+        }
+        h+=`<button class="ab play" ${canPlay?'':'disabled'} onclick="doPlay()" title="${costTitle}">▶ Play ${d?.name||''} (${costLabel})</button>`;
+      }
+      if(S.sel?.source==='field'){
+        h+=`<button class="ab atk" onclick="startAtk()">⚔ Attack</button>`;
+      }
+      h+=`<button class="ab phase" onclick="setPhase('ending')">→ End Actions</button>`;
+    } else if(phase==='ending'){
+      h+=`<button class="ab end" onclick="doEndTurn()">⏭ End Turn</button>`;
+    }
+    if(S.sel){
+      h+=`<button class="ab cancel" onclick="clearSel()">✕ Deselect</button>`;
+    }
+  }
+  bar.innerHTML=h;
+}
+
+function renderLog(log) {
+  const el=document.getElementById('log'); if(!el)return;
+  el.innerHTML=log.slice(-6).map(l=>`<div class="log-l">${l}</div>`).join('');
+  el.scrollTop=el.scrollHeight;
+}
+
+// ════════════════════════════════════════════
+//  INTERACTIONS
+// ════════════════════════════════════════════
+function selHand(cardId) {
+  if(S.atkMode) return;
+  if(storeMode) {
+    storeMode=false;
+    renderGame(); // refresh buttons immediately
+    doAct({action:'storeCard',cardId}).then(ok=>{
+      if(ok) toast('📦 Card stored! Drew 1 card.');
+    });
+    return;
+  }
+  if(S.sel?.cardId===cardId&&S.sel?.source==='hand'){showCardOv(cardId,true);return;}
+  S.sel={cardId,source:'hand'}; renderGame();
+}
+function toggleStoreMode() {
+  storeMode=!storeMode; S.sel=null; renderGame();
+  if(storeMode) toast('Click a card in your hand to store it');
+}
+function blockWithStorage(storageIid) {
+  if(!S.game?.pendingAttack) return;
+  if(S.game.pendingAttack.attackerPi===S.pi) return;
+  doAct({action:'resolveAttack',block:true,storageIid});
+}
+function passDamage() {
+  doAct({action:'resolveAttack',block:false});
+}
+function selField(iid) {
+  if(S.atkMode)return;
+  const me=S.game.players[S.pi];
+  const inst=me.field.find(c=>c.instanceId===iid);
+  if(!inst){return;}
+  if(!inst.charged){toast('Character is discharged!');return;}
+  S.sel={iid,cardId:inst.cardId,source:'field'}; renderGame();
+}
+function showOppCard(iid) {
+  const op=S.game.players[1-S.pi];
+  const inst=op.field.find(c=>c.instanceId===iid);
+  if(inst) showCardOv(inst.cardId,false);
+}
+function clearSel(){ S.sel=null; S.atkMode=false; storeMode=false; renderGame(); }
+
+// ── ELEMENT GAIN / RESET ────────────────────────────────────────────
+async function gainElement(elementType) {
+  const g=S.game; if(!g) return;
+  if(g.activePlayer!==S.pi){toast('Not your turn!');return;}
+  if(g.players[S.pi].gainedElementThisTurn){toast('Already gained an element this turn!');return;}
+  const ok=await doAct({action:'gainElement',elementType});
+  if(ok) toast(`+1 ${elementType} element gained!`);
+}
+async function resetElement(elementType) {
+  const g=S.game; if(!g) return;
+  if(g.activePlayer!==S.pi){toast('Not your turn!');return;}
+  if(!confirm(`Reset all ${elementType} elements from your pool?`)) return;
+  const ok=await doAct({action:'resetElement',elementType});
+  if(ok) toast(`${elementType} elements cleared.`);
+}
+
+// ── DRAG-TO-STORE ──────────────────────────────────────────────────
+function handDragStart(e, cardId) {
+  e.dataTransfer.setData('cardId', cardId);
+  e.dataTransfer.effectAllowed = 'move';
+  // brief delay so the ghost image is captured before we change anything
+  setTimeout(()=>{ storeMode=false; }, 0);
+}
+function storageDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const zone = document.getElementById('my-storage-zone');
+  if(zone) zone.classList.add('drag-over');
+}
+function storageDragLeave(e) {
+  const zone = document.getElementById('my-storage-zone');
+  if(zone) zone.classList.remove('drag-over');
+}
+async function storageDrop(e) {
+  e.preventDefault();
+  const zone = document.getElementById('my-storage-zone');
+  if(zone) zone.classList.remove('drag-over');
+  const cardId = e.dataTransfer.getData('cardId');
+  if(!cardId) return;
+  const g = S.game;
+  if(!g || g.activePlayer !== S.pi) { toast('Not your turn!'); return; }
+  const me = g.players[S.pi];
+  const maxStores = 1 + (me.extraStores||0);
+  if((me.storesThisTurn||0) >= maxStores) { toast('Already stored this turn!'); return; }
+  const ok = await doAct({action:'storeCard', cardId});
+  if(ok) toast('📦 Card stored! Drew 1 card.');
+}
+function cancelAtk(){ S.atkMode=false; renderGame(); }
+function startAtk(){
+  if(!S.sel||S.sel.source!=='field')return;
+  S.atkMode=true; renderGame();
+  toast('Select target on opponent\'s field, or use buttons below');
+}
+function atkTarget(iid){
+  if(!S.atkMode||!S.sel)return;
+  doAct({action:'attack',attackerIid:S.sel.iid,targetType:'character',targetRef:iid});
+  S.atkMode=false; S.sel=null;
+}
+function atkDirect(){
+  if(!S.atkMode||!S.sel)return;
+  doAct({action:'attack',attackerIid:S.sel.iid,targetType:'direct'});
+  S.atkMode=false; S.sel=null;
+}
+function clickFieldCard(){
+  if(S.atkMode&&S.sel){
+    doAct({action:'attack',attackerIid:S.sel.iid,targetType:'field'});
+    S.atkMode=false; S.sel=null;
+  }
+}
+async function doPlay(){
+  if(!S.sel||S.sel.source!=='hand')return;
+  const ok=await doAct({action:'playCard',cardId:S.sel.cardId});
+  if(ok) S.sel=null;
+}
+function doPlaySelected(){ closeCardOv(); if(S.sel) doPlay(); }
+async function setPhase(ph){ await doAct({action:'setPhase',phase:ph}); }
+async function doEndTurn(){ S.sel=null; S.atkMode=false; await doAct({action:'endTurn'}); }
+function clickPhase(ph){
+  if(S.game&&S.game.activePlayer===S.pi) setPhase(ph);
+}
+
+// ════════════════════════════════════════════
+//  CARD DETAIL OVERLAY
+// ════════════════════════════════════════════
+function showCardOv(cardId, canPlay) {
+  const d=S.cards[cardId]; if(!d)return;
+  document.getElementById('ov-name').textContent=d.name;
+  const artEl=document.getElementById('ov-art');
+  const imgUrl = CARD_IMGS[d.name]||'';
+  if(imgUrl){
+    artEl.innerHTML=`<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:6px" onerror="this.innerHTML='${d.art||'?'}'"><span class="cd-art-fallback" style="display:none">${d.art||'?'}</span>`;
+  } else {
+    artEl.textContent=d.art||'?';
+    artEl.style.background=d.color||'#333';
+  }
+  document.getElementById('ov-type').textContent=`${d.type}${d.subtype?' — '+d.subtype:''} | ${d.element}`;
+  const kws=d.keywords||[];
+  let kh=''; if(d.rarity==='SR')kh+=`<span class="kwtag" style="background:var(--gold);color:#000">SR</span> `;
+  kws.forEach(k=>{const m={Defender:'#2980b9','Only Once':'#8e44ad',Early:'#27ae60'};kh+=`<span class="kwtag" style="background:${m[k]||'#555'}">${k}</span> `;});
+  document.getElementById('ov-kws').innerHTML=kh;
+  document.getElementById('ov-cost').innerHTML=`<span style="color:var(--gold)">Cost:</span> ${d.cost}`;
+  document.getElementById('ov-atk').innerHTML=d.atk!==undefined?`<span style="color:#e74c3c">⚔:</span> ${d.atk}`:'';
+  document.getElementById('ov-hp').innerHTML=d.hp!==undefined?`<span style="color:#2ecc71">❤:</span> ${d.hp}`:'';
+  document.getElementById('ov-eff').textContent=d.effect||'No effect.';
+  document.getElementById('ov-play').style.display=(canPlay&&S.sel?.source==='hand')?'':'none';
+  document.getElementById('ov-card').classList.add('show');
+}
+function closeCardOv(){ document.getElementById('ov-card').classList.remove('show'); }
+function closeOv(e){ if(e.target.classList.contains('ov')) closeCardOv(); }
+
+// ════════════════════════════════════════════
+//  WIN
+// ════════════════════════════════════════════
+function showWin(wi){
+  if(poll)clearInterval(poll);
+  document.getElementById('win-h').textContent=wi===S.pi?'🏆 Victory!':'💀 Defeat';
+  document.getElementById('win-p').textContent=wi===S.pi
+    ?'You defeated your opponent! Well played!'
+    :'Your opponent won this time. Good luck next game!';
+  document.getElementById('ov-win').classList.add('show');
+}
+
+// ════════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════════
+function toast(msg){
+  const t=document.createElement('div');
+  t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .4s';setTimeout(()=>t.remove(),400);},2200);
+}
+
+// ════════════════════════════════════════════
+//  API
+// ════════════════════════════════════════════
+async function api(path,method='GET',body=null){
+  const opts={method,headers:{'Content-Type':'application/json'}};
+  if(body) opts.body=JSON.stringify({...body,roomId:S.roomId,secret:S.secret});
+  const r=await fetch(SRV+path,opts);
+  const d=await r.json();
+  if(!r.ok) throw new Error(d.error||'Server error');
+  return d;
+}
+async function doAct(body){
+  try{
+    const r=await api('/action','POST',body);
+    if(r.ok){S.game=r.game;renderGame();return true;}
+    else{toast(r.error||'Action failed');return false;}
+  }catch(e){toast('Connection error');return false;}
+}
+
+// Preload cards
+loadCards().catch(()=>{});
+</script>
+</body>
+</html>
