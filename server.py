@@ -386,23 +386,22 @@ def make_player(pid, element):
     rest = deck_ids[5:]
     fc_id = STARTING_FIELD.get(element, "fl01")
     lives = FIELD_LIVES.get(fc_id, 5)
-    # Start with 1 of the deck's element type
-    el_dict = {"Water":0,"Fire":0,"Earth":0,"Electricity":0,"Psychic":0,"Dark":0}
-    if element in el_dict:
-        el_dict[element] = 1
+    # Start with 0 elements — gain 1 of your choice each beginning phase
+    el_zero = {"Water":0,"Fire":0,"Earth":0,"Electricity":0,"Psychic":0,"Dark":0}
     return {
         "id": pid,
         "element": element,
-        "elements": el_dict,
+        "elements":    {**el_zero},  # current spendable pool (refills from bank each turn)
+        "elementBank": {**el_zero},  # permanent bank — grows +1 per turn, caps at 6 total
         "gainedElementThisTurn": False,
         "hand": hand,
         "deck": rest,
-        "field":   [],       # [{cardId, charged, currentHp, instanceId}]
-        "storage": [],       # [{cardId, currentHp, maxHp, instanceId}] — actual stored cards
-        "storesThisTurn": 0, # reset each turn end; max 1 store by default
-        "extraStores": 0,    # bonus stores granted by card effects (Spite/Gabriel/Storage Space)
+        "field":   [],
+        "storage": [],
+        "storesThisTurn": 0,
+        "extraStores": 0,
         "trash": [],
-        "lives": lives,      # synced with fieldCards[pi].hp
+        "lives": lives,
     }
 
 def make_game(p1_element, p2_element):
@@ -461,12 +460,19 @@ def action_end_turn(game, player_idx):
     game["phase"] = "beginning"
     game["turn"] += 1
     op = game["players"][1 - player_idx]
-    op["gainedElementThisTurn"] = False  # opponent can choose element next turn
+    op["gainedElementThisTurn"] = False
+    # Refill opponent's element pool from their bank (like mana refill each turn)
+    # Elements spent this turn are restored; bank only grows via gainElement
+    bank = op.get("elementBank", {e: 0 for e in ELEMENTS})
+    op["elements"] = {e: bank.get(e, 0) for e in ELEMENTS}
     game["log"].append(f"Player {player_idx+1} ended their turn.")
     return True, "OK"
 
 def action_gain_element(game, player_idx, element_type):
-    """Player gains 1 element of their choice (once per turn)."""
+    """Player gains 1 element of their choice (once per turn).
+    Bank grows +1 per turn (max 6 total across all types).
+    Current elements also get +1 immediately.
+    """
     if game["activePlayer"] != player_idx:
         return False, "Not your turn"
     p = game["players"][player_idx]
@@ -474,12 +480,18 @@ def action_gain_element(game, player_idx, element_type):
         return False, "Already gained an element this turn"
     if element_type not in ELEMENTS:
         return False, "Invalid element type"
-    total = sum(p["elements"].values())
-    if total >= 10:
-        return False, "Element pool full (max 10)"
+    # Cap is on the BANK (permanent pool size), not current spendable
+    if "elementBank" not in p:
+        p["elementBank"] = {e: 0 for e in ELEMENTS}
+    bank_total = sum(p["elementBank"].values())
+    if bank_total >= 6:
+        return False, "Element bank full (max 6 — turn 6 cap reached)"
+    # Grow the bank permanently
+    p["elementBank"][element_type] = p["elementBank"].get(element_type, 0) + 1
+    # Also add to current spendable pool right now
     p["elements"][element_type] = p["elements"].get(element_type, 0) + 1
     p["gainedElementThisTurn"] = True
-    game["log"].append(f"Player {player_idx+1} gained 1 {element_type} element.")
+    game["log"].append(f"Player {player_idx+1} gained 1 {element_type}. Bank: {sum(p['elementBank'].values())}/6")
     return True, "OK"
 
 def action_reset_element(game, player_idx, element_type):
@@ -687,6 +699,8 @@ def action_resolve_attack(game, player_idx, block, storage_iid=None):
         if not sc:
             return False, "Storage card not found"
         cd = card_by_id(sc["cardId"])
+        if cd.get("type") not in ("Character",):
+            return False, f"{cd['name']} is an {cd.get('type','?')} card — only Characters can block attacks"
         sc["currentHp"] -= 1
         if sc["currentHp"] <= 0:
             defender["storage"].remove(sc)
@@ -812,9 +826,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 p2["storesThisTurn"] = 0
                 p2["extraStores"] = 0
                 p2["gainedElementThisTurn"] = False
-                el_dict = {"Water":0,"Fire":0,"Earth":0,"Electricity":0,"Psychic":0,"Dark":0}
-                if element in el_dict: el_dict[element] = 1
-                p2["elements"] = el_dict
+                el_zero = {"Water":0,"Fire":0,"Earth":0,"Electricity":0,"Psychic":0,"Dark":0}
+                p2["elements"]    = {**el_zero}   # start empty — gain 1 in beginning phase
+                p2["elementBank"] = {**el_zero}   # bank also starts empty
                 p2["storage"] = []
                 # Set correct lives for P2's element
                 fc2_id = STARTING_FIELD.get(element, "fl01")

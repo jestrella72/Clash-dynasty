@@ -403,6 +403,39 @@ input, select { font-family: inherit; }
 .kwt th { color:var(--gold); padding:5px 7px; text-align:left; border-bottom:1px solid var(--border); }
 .kwt td { padding:4px 7px; border-bottom:1px solid rgba(255,255,255,.05); vertical-align:top; }
 
+/* ── ELEMENT PICKER PANEL ── */
+.el-panel { display:flex; flex-direction:column; align-items:center; gap:4px; padding:6px 8px; width:100%; }
+.el-panel-title { font-size:.48rem; text-transform:uppercase; letter-spacing:2px; font-weight:700; text-align:center; }
+.el-panel-title.can-pick { color:var(--gold2); animation: glow-pulse 1.6s infinite; }
+.el-panel-title.picked    { color:#5f5; }
+.el-panel-title.no-turn   { color:rgba(255,255,255,.25); }
+@keyframes glow-pulse { 0%,100%{opacity:1} 50%{opacity:.55} }
+.el-btns { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; }
+.el-btn {
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  width:52px; cursor:default; transition:transform .15s,box-shadow .15s;
+  border-radius:10px; padding:3px 2px;
+}
+.el-btn.selectable { cursor:pointer; }
+.el-btn.selectable:hover .el-btn-img { transform:scale(1.12); box-shadow:0 0 14px gold; }
+.el-btn-img {
+  width:44px; height:44px; border-radius:10px; border:2px solid rgba(255,255,255,.12);
+  overflow:hidden; position:relative; transition:all .2s; flex-shrink:0;
+}
+.el-btn.has-count .el-btn-img { border-color:#fff; box-shadow:0 0 6px rgba(255,255,255,.3); }
+.el-btn.selectable .el-btn-img { border-color:rgba(201,162,39,.7); }
+.el-btn-name { font-size:.38rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; white-space:nowrap; }
+.el-btn.has-count .el-btn-name { color:var(--gold2); }
+.el-btn-name:not(.el-btn.has-count .el-btn-name) { color:rgba(255,255,255,.4); }
+.el-count-badge { position:absolute; top:2px; right:2px; background:rgba(0,0,0,.88); color:#ffe060; font-size:.42rem; font-weight:900; border-radius:4px; padding:0 3px; line-height:1.5; }
+.el-pool-bar { font-size:.42rem; color:rgba(255,255,255,.3); letter-spacing:1px; }
+
+/* ── TRASH OVERLAY ── */
+.trash-ov-grid { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; max-height:55vh; overflow-y:auto; padding:8px 4px; }
+.trash-ov-grid .card { flex-shrink:0; }
+.trash-clickable { cursor:pointer; text-decoration:underline dotted; }
+.trash-clickable:hover { color:#fff; }
+
 /* ── TOAST ── */
 .toast { position:fixed; bottom:130px; left:50%; transform:translateX(-50%); background:#222; color:#fff; padding:7px 15px; border-radius:18px; font-size:0.78rem; z-index:300; pointer-events:none; border:1px solid #444; }
 
@@ -587,6 +620,28 @@ input, select { font-family: inherit; }
     <div class="ov-btns">
       <button class="ab play" id="ov-play" onclick="doPlaySelected()" style="display:none">▶ Play</button>
       <button class="ab cancel" onclick="closeCardOv()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TRASH OVERLAY ══════════════════════════════════════ -->
+<div class="ov" id="ov-trash" onclick="closeTrashOv(event)">
+  <div class="ovc" onclick="event.stopPropagation()" style="max-width:640px;width:95%">
+    <button class="xbtn" onclick="closeTrashOv()">✕</button>
+    <h3 id="trash-ov-title">🗑 Trash</h3>
+    <div class="trash-ov-grid" id="trash-ov-cards"></div>
+    <div class="ov-btns" style="margin-top:10px">
+      <button class="ab cancel" onclick="closeTrashOv()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CARD DETAIL POPUP (trash viewer) ═══════════════════ -->
+<div class="ov" id="ov-card-detail" onclick="closeCardDetail(event)" style="z-index:9999">
+  <div class="ovc" onclick="event.stopPropagation()" style="max-width:380px;width:92%;padding:0;background:transparent;box-shadow:none">
+    <div id="card-detail-inner" style="display:flex;gap:12px;align-items:flex-start"></div>
+    <div style="text-align:center;margin-top:10px">
+      <button class="ab cancel" onclick="closeCardDetail()">✕ Close</button>
     </div>
   </div>
 </div>
@@ -893,12 +948,13 @@ function renderGame() {
   renderEpips('opp-epips', op.elements, op.element);
   renderEpips('my-epips',  me.elements, me.element);
 
-  // Hand count + trash
+  // Hand count + trash (clickable to view)
   document.getElementById('opp-hcnt').textContent=`✋ ${op.handCount??0}`;
-  document.getElementById('my-trash-info').textContent=`🗑 Trash: ${me.trash?.length??0}`;
+  document.getElementById('my-trash-info').innerHTML=
+    `<span class="trash-clickable" onclick="openTrash(${S.pi})">🗑 Trash: ${me.trash?.length??0}</span>`;
 
-  // Slot row — shows all 6 element types, clickable to gain
-  renderSlots(me.elements, myTurn, me.gainedElementThisTurn);
+  // Slot row — element picker panel
+  renderSlots(me.elements, myTurn, me.gainedElementThisTurn, me.elementBank||{});
 
   // Fields
   renderOppField(op.field||[]);
@@ -915,8 +971,9 @@ function renderGame() {
   document.getElementById('my-deck-count').textContent=(me.deck?.length??0);
   document.getElementById('opp-deck-cnt').textContent=(op.deck?.length??op.handCount??'?');
 
-  // Trash counts
-  document.getElementById('opp-trash-cnt').textContent=op.trash?.length??0;
+  // Trash counts (clickable)
+  document.getElementById('opp-trash-cnt').innerHTML=
+    `<span class="trash-clickable" onclick="openTrash(${1-S.pi})">${op.trash?.length??0}</span>`;
 
   // Hand
   renderHand(me.hand||[]);
@@ -969,31 +1026,58 @@ function renderEpips(id, elements, element) {
   el.innerHTML=h;
 }
 
-function renderSlots(elements, myTurn, gainedElement) {
-  const el=document.getElementById('slot-row'); if(!el)return;
-  let h='<span class="slot-lbl">SLOT</span>';
+function renderSlots(elements, myTurn, gainedElement, elementBank) {
+  const row=document.getElementById('slot-row'); if(!row)return;
+  const canGain  = myTurn && !gainedElement;
+  const total    = Object.values(elements||{}).reduce((a,b)=>a+b,0);
+  const bankTotal= Object.values(elementBank||{}).reduce((a,b)=>a+b,0);
+
+  // Title label
+  let titleCls, titleTxt;
+  if(canGain){
+    titleCls='can-pick';
+    titleTxt=`✨ Choose 1 Element to Gain This Turn  •  Bank: ${bankTotal}/6`;
+  } else if(gainedElement){
+    titleCls='picked';
+    titleTxt=`✅ Element Gained  •  Bank: ${bankTotal}/6  •  Available: ${total}`;
+  } else {
+    titleCls='no-turn';
+    titleTxt=`Element Bank: ${bankTotal}/6  •  Available: ${total}`;
+  }
+
+  let btnHtml='';
   for(const etype of ELEMENTS_ORDER){
-    const count=(elements&&elements[etype])||0;
-    const canGain=myTurn&&!gainedElement;
-    const imgUrl=EL_IMG[etype]||'';
-    const sym=EL_SYM[etype]||'?';
-    const cls=EL_CLS[etype]||'';
-    // Active = has elements of this type. When canGain, never dim to 'used' — all 6 are selectable.
-    const tokenState = count>0 ? 'active' : (canGain ? '' : 'used');
-    const imgFilter  = count>0 ? '' : (canGain ? 'filter:grayscale(0.2) brightness(0.6)' : 'filter:grayscale(0.9) brightness(0.28)');
-    h+=`<div class="slot-token ${cls} ${tokenState}"
-      title="${etype}: ${count}${canGain?' — click to gain 1':''}${count>0?' — right-click to reset':''}"
-      style="position:relative;overflow:visible;${canGain?'cursor:pointer':'cursor:default'};${canGain?'filter:drop-shadow(0 0 5px gold)':''}"
+    const count   = (elements&&elements[etype])||0;
+    const imgUrl  = EL_IMG[etype]||'';
+    const sym     = EL_SYM[etype]||'?';
+    const hasCnt  = count>0;
+    const selCls  = canGain ? 'selectable' : '';
+    const cntCls  = hasCnt  ? 'has-count'  : '';
+    const dimImg  = hasCnt ? '' : (canGain ? 'filter:grayscale(0.15) brightness(0.55)' : 'filter:grayscale(0.85) brightness(0.22)');
+    const dimWrap = (!hasCnt && !canGain) ? 'opacity:.28' : 'opacity:1';
+
+    btnHtml+=`
+    <div class="el-btn ${selCls} ${cntCls}"
+      style="${dimWrap}"
+      title="${etype}${hasCnt?' ('+count+' in pool)':''}${canGain?' — click to gain 1':''}${hasCnt?' — right-click to reset':''}"
       onclick="${canGain?`gainElement('${etype}')`:''}"
-      oncontextmenu="event.preventDefault();${count>0?`resetElement('${etype}')`:''}" >
-      ${imgUrl
-        ?`<img src="${imgUrl}" alt="${sym}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;${imgFilter}" onerror="this.outerHTML='<span style=\\'font-size:.75rem\\'>${sym}</span>'">`
-        :`<span style="font-size:.75rem">${sym}</span>`}
-      ${count>0?`<span style="position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.9);color:#ffe060;font-size:.44rem;font-weight:900;border-radius:4px;padding:0 3px;min-width:14px;text-align:center;pointer-events:none;white-space:nowrap">${count}</span>`:''}
+      oncontextmenu="event.preventDefault();${hasCnt?`resetElement('${etype}')`:''}" >
+      <div class="el-btn-img">
+        ${imgUrl
+          ?`<img src="${imgUrl}" alt="${sym}" style="width:100%;height:100%;object-fit:cover;${dimImg}" onerror="this.outerHTML='<div style=\\'font-size:1.1rem;display:flex;align-items:center;justify-content:center;height:100%\\'>${sym}</div>'">`
+          :`<div style="font-size:1.1rem;display:flex;align-items:center;justify-content:center;height:100%">${sym}</div>`}
+        ${hasCnt?`<div class="el-count-badge">${count}</div>`:''}
+      </div>
+      <div class="el-btn-name" style="color:${hasCnt?'var(--gold2)':'rgba(255,255,255,.45)'}">${etype}</div>
     </div>`;
   }
-  h+='<span style="font-size:.42rem;color:rgba(200,160,50,.4);margin-left:4px;align-self:center">click=gain<br>R-click=reset</span>';
-  el.innerHTML=h;
+
+  row.innerHTML=`
+  <div class="el-panel">
+    <div class="el-panel-title ${titleCls}">${titleTxt}</div>
+    <div class="el-btns">${btnHtml}</div>
+    <div class="el-pool-bar">${bankTotal===0?'Gain 1 element per turn — pick any type above (grows each turn, refills each turn)':bankTotal>=6?'Bank full (6/6) — elements refill to max each turn':'Right-click an element to reset its count'}</div>
+  </div>`;
 }
 
 function renderStorage(id, storage, isMe) {
@@ -1005,14 +1089,16 @@ function renderStorage(id, storage, isMe) {
   el.innerHTML=storage.map(inst=>{
     const d=S.cards[inst.cardId]||{name:inst.cardId,color:'#333',art:'?'};
     const imgUrl=CARD_IMGS[d.name]||'';
-    const canBlock = isMe && S.game?.pendingAttack && S.game.pendingAttack.attackerPi !== S.pi;
-    return `<div class="storage-chip alive" title="${d.name} ❤${inst.currentHp}"
-      style="background:${d.color||'#8a0a0a'};cursor:${canBlock?'pointer':'default'};position:relative;overflow:hidden;${canBlock?'border-color:#ffe060;box-shadow:0 0 8px rgba(255,220,0,.6)':''}"
+    const isCharacter = d.type === 'Character';
+    const canBlock = isMe && isCharacter && S.game?.pendingAttack && S.game.pendingAttack.attackerPi !== S.pi;
+    const hpDisplay = isCharacter ? `❤${inst.currentHp}` : `<span style="color:#aaa;font-size:.4rem">No Block</span>`;
+    return `<div class="storage-chip alive" title="${d.name}${isCharacter?' ❤'+inst.currentHp:' (cannot block)'}"
+      style="background:${d.color||'#8a0a0a'};cursor:${canBlock?'pointer':'default'};position:relative;overflow:hidden;${canBlock?'border-color:#ffe060;box-shadow:0 0 8px rgba(255,220,0,.6)':''}${!isCharacter?';opacity:.7;border-style:dashed':''}"
       onclick="${canBlock?`blockWithStorage('${inst.instanceId}')`:''}" >
       ${imgUrl?`<img src="${imgUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.65" onerror="this.style.display='none'">`:'' }
       <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:1px">
         <div style="font-size:.38rem;font-weight:700;color:#fff;text-align:center;line-height:1.1;white-space:nowrap;overflow:hidden;max-width:30px;text-overflow:ellipsis">${d.name.slice(0,7)}</div>
-        <div style="font-size:.5rem;color:#f88">❤${inst.currentHp}</div>
+        <div style="font-size:.5rem;color:#f88">${hpDisplay}</div>
       </div>
     </div>`;
   }).join('');
@@ -1373,6 +1459,62 @@ function showCardOv(cardId, canPlay) {
 }
 function closeCardOv(){ document.getElementById('ov-card').classList.remove('show'); }
 function closeOv(e){ if(e.target.classList.contains('ov')) closeCardOv(); }
+
+// ════════════════════════════════════════════
+//  TRASH VIEWER
+// ════════════════════════════════════════════
+function openTrash(pi) {
+  if(!S.game) return;
+  const player = S.game.players[pi];
+  const trash  = player?.trash || [];
+  const isMe   = pi === S.pi;
+  const title  = isMe ? 'Your Trash' : "Opponent's Trash";
+  document.getElementById('trash-ov-title').textContent = `🗑 ${title} — ${trash.length} card${trash.length!==1?'s':''}`;
+  const grid = document.getElementById('trash-ov-cards');
+  if(trash.length === 0){
+    grid.innerHTML='<div style="color:var(--text2);font-size:.85rem;padding:20px">No cards in trash yet.</div>';
+  } else {
+    // Show each trashed card — newest first — clickable for detail
+    grid.innerHTML=[...trash].reverse().map(cid=>{
+      const html = cardHTML(cid,null,{});
+      // Wrap in a clickable div
+      return `<div onclick="openCardDetail('${cid}')" style="cursor:pointer;transform:scale(1);transition:transform .15s" onmouseenter="this.style.transform='scale(1.07)'" onmouseleave="this.style.transform='scale(1)'" title="Click to view full card">${html}</div>`;
+    }).join('');
+  }
+  document.getElementById('ov-trash').classList.add('show');
+}
+function closeTrashOv(e){
+  if(!e || e.target.id==='ov-trash') document.getElementById('ov-trash').classList.remove('show');
+}
+
+function openCardDetail(cardId) {
+  const d = S.cards[cardId];
+  if(!d) return;
+  const imgUrl = CARD_IMGS[d.name] || '';
+  const elColor = {'Water':'#1a5a8a','Fire':'#8a2a00','Earth':'#4a6a1a','Electricity':'#6a6a00','Psychic':'#5a1a8a','Dark':'#2a2a4a','Any':'#444','Mercenary':'#5a3a1a'}[d.element]||'#333';
+  const typeIcon = {'Character':'⚔️','Event':'✨','Trigger':'⚡','Field':'🏰'}[d.type]||'?';
+  let statsRow = '';
+  if(d.type==='Character') statsRow=`<div style="display:flex;gap:10px;margin-top:6px"><span style="color:#f88">❤ HP: ${d.hp||1}</span><span style="color:#fc8">⚔ ATK: ${d.atk||0}</span></div>`;
+  let costRow = '';
+  if(d.cost>0){
+    const costEls = d.cost_elements ? Object.entries(d.cost_elements).map(([e,n])=>`${n} ${e}`).join(' + ') : `${d.cost} ${d.element}`;
+    costRow=`<div style="color:#adf;margin-top:4px;font-size:.78rem">💎 Cost: ${costEls}</div>`;
+  }
+  document.getElementById('card-detail-inner').innerHTML=`
+    ${imgUrl?`<img src="${imgUrl}" style="width:140px;height:195px;object-fit:cover;border-radius:8px;flex-shrink:0;border:2px solid ${elColor}" onerror="this.style.display='none'">` : `<div style="width:140px;height:195px;border-radius:8px;background:${elColor};display:flex;align-items:center;justify-content:center;font-size:2.5rem;flex-shrink:0">${d.art||typeIcon}</div>`}
+    <div style="flex:1;background:rgba(0,0,0,.85);border-radius:8px;padding:12px;border:1px solid ${elColor}">
+      <div style="font-size:.65rem;color:#aaa;margin-bottom:2px">${typeIcon} ${d.type} · ${d.element||''} · ${d.rarity||''}</div>
+      <div style="font-size:1rem;font-weight:700;color:#fff;margin-bottom:4px">${d.name}</div>
+      ${statsRow}
+      ${costRow}
+      ${d.effect?`<div style="margin-top:8px;font-size:.72rem;color:#ddd;line-height:1.45;border-top:1px solid rgba(255,255,255,.15);padding-top:6px">${d.effect}</div>`:''}
+      ${d.timing?`<div style="margin-top:6px;font-size:.65rem;color:#fc8;font-style:italic">⏱ ${d.timing}</div>`:''}
+    </div>`;
+  document.getElementById('ov-card-detail').classList.add('show');
+}
+function closeCardDetail(e){
+  if(!e || e.target.id==='ov-card-detail') document.getElementById('ov-card-detail').classList.remove('show');
+}
 
 // ════════════════════════════════════════════
 //  WIN
