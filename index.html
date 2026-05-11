@@ -792,8 +792,10 @@ function showLobby(mode) {
       <div id="ls" style="margin-top:14px"></div>`;
   } else if(mode==='join') {
     c.innerHTML=`<h2>🔗 Join Game</h2>
-      <div class="fg"><label>Room Code</label><input id="jc" type="text" placeholder="Enter code" maxlength="6" style="text-transform:uppercase;letter-spacing:3px;font-size:1.2rem;font-weight:700"></div>
       <div class="fg"><label>Your Element</label><select id="je">${EO}</select></div>
+      <button class="abtn join" style="font-size:1rem;padding:14px;background:linear-gradient(135deg,#1a6a1a,#0a4a0a)" onclick="quickJoin()">⚡ Quick Join (auto-find open game)</button>
+      <div style="text-align:center;margin:10px 0;color:var(--text2);font-size:.75rem">— or enter a Room Code manually —</div>
+      <div class="fg"><label>Room Code</label><input id="jc" type="text" placeholder="Enter code" maxlength="6" style="text-transform:uppercase;letter-spacing:3px;font-size:1.2rem;font-weight:700"></div>
       <button class="abtn join" onclick="joinGame()">Join Room</button>
       <button class="abtn back" onclick="go('menu')">← Back</button>
       <div id="ls" style="margin-top:14px"></div>`;
@@ -835,6 +837,19 @@ async function joinGame() {
   try {
     const r=await api('/join','POST',{roomId:code,element:el});
     S.roomId=r.roomId; S.secret=r.secret; S.pi=1;
+    ls.innerHTML='<span class="dot ok"></span> Joined! Loading game...';
+    await loadCards(); startPoll();
+  } catch(e){ ls.innerHTML=`<span style="color:var(--red)">Error: ${e.message}</span>`; }
+}
+async function quickJoin() {
+  const el=document.getElementById('je').value;
+  const ls=document.getElementById('ls');
+  ls.innerHTML='<span class="dot wait"></span> Looking for open game...';
+  try {
+    const r=await fetch(SRV+'/quickjoin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({element:el})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||'No open games found');
+    S.roomId=d.roomId; S.secret=d.secret; S.pi=1;
     ls.innerHTML='<span class="dot ok"></span> Joined! Loading game...';
     await loadCards(); startPoll();
   } catch(e){ ls.innerHTML=`<span style="color:var(--red)">Error: ${e.message}</span>`; }

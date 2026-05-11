@@ -821,6 +821,36 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 rooms[room_id] = game
                 self.send_json({"roomId": room_id, "secret": game["p1_secret"], "playerIndex": 0})
 
+            elif path == "/quickjoin":
+                # Auto-join the first open room — no room code needed
+                element = body.get("element", "Water")
+                open_room = next((r for r in rooms if not rooms[r].get("p2_joined") and rooms[r].get("p1_joined")), None)
+                if not open_room:
+                    self.send_json({"error": "No open rooms. Have P1 create a game first."}, 404); return
+                body["roomId"] = open_room
+                # Fall through to join logic below
+                room_id = open_room
+                game = rooms[room_id]
+                game["p2_joined"] = True
+                game["started"] = True
+                p2 = game["players"][1]
+                p2["element"] = element
+                deck_ids = build_deck(element)
+                p2["hand"] = deck_ids[:6]
+                p2["deck"] = deck_ids[6:]
+                p2["storesThisTurn"] = 0
+                p2["extraStores"] = 0
+                p2["gainedElementThisTurn"] = False
+                el_zero = {"Water":0,"Fire":0,"Earth":0,"Electricity":0,"Psychic":0,"Dark":0}
+                p2["elements"]    = {**el_zero}
+                p2["elementBank"] = {**el_zero}
+                p2["storage"] = []
+                fc2_id = STARTING_FIELD.get(element, "fl01")
+                p2["lives"] = FIELD_LIVES.get(fc2_id, 5)
+                game["fieldCards"][1] = make_starting_fc(element)
+                game["log"].append("Player 2 joined! Game begins.")
+                self.send_json({"roomId": room_id, "secret": game["p2_secret"], "playerIndex": 1})
+
             elif path == "/join":
                 room_id = body.get("roomId", "").upper()
                 element = body.get("element", "Water")
@@ -929,6 +959,9 @@ if __name__ == "__main__":
     import socket
     host = "0.0.0.0"
     port = 8080
+    # Allow port reuse so restart works immediately without waiting
+    http.server.HTTPServer.allow_reuse_address = True
+    http.server.ThreadingHTTPServer.allow_reuse_address = True
     server = http.server.ThreadingHTTPServer((host, port), Handler)
     # Get local IP
     try:
