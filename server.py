@@ -12,6 +12,7 @@ import uuid
 import threading
 import time
 import os
+import urllib.request
 from urllib.parse import urlparse, parse_qs
 
 # Directory where server.py lives — use this for all file lookups
@@ -28,301 +29,43 @@ ELEMENT_SYMBOLS = {
 }
 
 # ── Card Database ────────────────────────────────────────────────────────────
-CARDS = [
-    # ── EVENT CARDS (nums 1-8) ────────────────────────────────────────────────
-    {"id":"ev01","name":"Clash",            "type":"Event","cost":0,"element":"Any",
-     "effect":"1 character gains +1 ATK if its ATK is 1 or less. Then draw 1 card.",
-     "timing":"During Your Turn","art":"⚡","color":"#2a4a8a"},
-    {"id":"ev02","name":"Cloud Rose",       "type":"Event","cost":2,"element":"Any",
-     "effect":"Draw 1 card and bottom deck 1 card from your hand. Then deal 1 damage to a character.",
-     "timing":"During Your Turn","art":"🌹","color":"#8a2a2a"},
-    {"id":"ev03","name":"Reinforcements",   "type":"Event","cost":1,"element":"Any",
-     "effect":"1 character gets +1 ATK until end of turn. Look at top 5 cards; add 1 (not Reinforcements) then rearrange.",
-     "timing":"During Your Turn","art":"⚔️","color":"#2a6a2a"},
-    {"id":"ev04","name":"Super-Charge",     "type":"Event","cost":1,"element":"Any",
-     "effect":"You can re-charge your character or Field Card again during the turn.",
-     "timing":"During Your Turn","art":"🔋","color":"#6a6a00"},
-    {"id":"ev05","name":"Circuit Battery",  "type":"Event","cost":5,"element":"Electricity",
-     "effect":"Recharge or reset all cards on your Field.",
-     "timing":"During Your Turn","art":"🔌","color":"#1a4a6a"},
-    {"id":"ev06","name":"Malfunction",      "type":"Event","cost":0,"element":"Any",
-     "effect":"Drop 1 from the top of your deck, then deal 2 damage to a character on the field or Storage Zone.",
-     "timing":"During Your Turn","art":"💥","color":"#4a0a4a"},
-    {"id":"ev07","name":"Telekinesis",      "type":"Event","cost":0,"element":"Psychic",
-     "effect":"Deal 2 damage to all characters on the Field.",
-     "timing":"During Your Turn","art":"🧠","color":"#3a0a6a"},
-    {"id":"ev08","name":"Assassin's Mark",  "type":"Event","cost":0,"element":"Dark",
-     "effect":"Target 1 character. That character cannot attack this turn.",
-     "timing":"During Your Turn","art":"🗡️","color":"#1a1a3a"},
+# Cards are stored in cards.json — edit that file to add/change cards.
+# server.py loads it at startup; restart the server to pick up changes.
+_cards_path = os.path.join(BASE_DIR, 'cards.json')
+with open(_cards_path, encoding='utf-8') as _f:
+    CARDS = json.load(_f)
 
-    # ── TRIGGER CARDS (nums 9-16) ─────────────────────────────────────────────
-    {"id":"tr01","name":"Cold Fusion",      "type":"Trigger","cost":0,"element":"Any",
-     "effect":"Negate the activation of 1 card effect.",
-     "timing":"Any Time","art":"❄️","color":"#0a4a6a"},
-    {"id":"tr02","name":"Barrier",          "type":"Trigger","cost":0,"element":"Any",
-     "effect":"Prevent 1 attack from being resolved. Then reduce the ATK of 1 of your characters by 1.",
-     "timing":"Any Time","art":"🛡️","color":"#4a4a2a"},
-    {"id":"tr03","name":"Medic Aid",        "type":"Trigger","cost":0,"element":"Earth",
-     "effect":"Restore 1 health to a character.",
-     "timing":"Any Time","art":"💊","color":"#2a6a2a"},
-    {"id":"tr04","name":"Weather Change",   "type":"Trigger","cost":0,"element":"Any",
-     "effect":"Change the active field element until end of turn.",
-     "timing":"Any Time","art":"🌦️","color":"#1a5a6a"},
-    {"id":"tr05","name":"Resurrection",     "type":"Trigger","cost":0,"element":"Psychic",
-     "effect":"Return 1 character from your Trash to your hand.",
-     "timing":"Any Time","art":"✨","color":"#5a1a8a"},
-    {"id":"tr06","name":"United",           "type":"Trigger","cost":0,"element":"Any",
-     "effect":"All your characters gain +1 Attack until end of turn.",
-     "timing":"Any Time","art":"🤝","color":"#6a4a0a"},
-    {"id":"tr07","name":"Rage",             "type":"Trigger","cost":0,"element":"Any",
-     "effect":"If a player has more than 5 cards in hand, that player discards 1 card.",
-     "timing":"Any Time","art":"😡","color":"#6a1a1a"},
-    {"id":"tr08","name":"Storage Space",    "type":"Trigger","cost":0,"element":"Earth",
-     "effect":"Store up to 2 cards from your hand in the Storage Zone.",
-     "timing":"Any Time","art":"📦","color":"#4a3a1a"},
+# ── Image proxy cache ─────────────────────────────────────────────────────────
+# Maps card name → Google Drive fileId for server-side image fetching.
+# Images are cached locally in card_images/ so they load fast after first fetch.
+IMAGES_DIR = os.path.join(BASE_DIR, 'card_images')
+os.makedirs(IMAGES_DIR, exist_ok=True)
+CARD_FILE_IDS = {c['name']: c.get('fileId', '') for c in CARDS}
 
-    # ── FIELD CARDS ───────────────────────────────────────────────────────────
-    {"id":"fl01","name":"The Cove",         "type":"Field","cost":0,"element":"Water",
-     "effect":"Spend 2 Elements: Draw 1 card from the top of your deck.",
-     "timing":"During Your Turn","slots":5,"hp":5,"art":"🌊","color":"#0a2a5a"},
-    {"id":"fl02","name":"The Ruins",        "type":"Field","cost":0,"element":"Earth",
-     "effect":"Spend 2 Elements: Deal 1 damage to a character.",
-     "timing":"During Your Turn","slots":4,"hp":5,"art":"🏚️","color":"#1a0a1a"},
-    {"id":"fl03","name":"The Throne Room",  "type":"Field","cost":0,"element":"Earth",
-     "effect":"Spend 2 Elements: Return 1 Trigger character card from the Trash to your hand.",
-     "timing":"During Your Turn","slots":4,"hp":5,"art":"👑","color":"#2a1a0a"},
-    {"id":"fl04","name":"The Cementary",    "type":"Field","cost":0,"element":"Dark",
-     "effect":"Trash the top two cards from your deck, then reduce a character's value by -1 until end of turn.",
-     "timing":"During Your Turn","slots":4,"hp":3,"art":"⚰️","color":"#1a0a0a"},
-    {"id":"fl05","name":"Sky Light City",    "type":"Field","cost":0,"element":"Electricity",
-     "effect":"Spend 2 Elements: All your characters gain +1 ATK until end of turn.",
-     "timing":"During Your Turn","slots":5,"hp":5,"art":"🌆","color":"#0a0a2a"},
-    {"id":"fl06","name":"The City of Rapture","type":"Field","cost":0,"element":"Water",
-     "effect":"Spend 2 Elements: Draw 2 cards, then place 1 card from hand on the bottom of your deck.",
-     "timing":"During Your Turn","slots":5,"hp":5,"art":"🏙️","color":"#041030"},
-    {"id":"fl07","name":"The Fire Temple",   "type":"Field","cost":0,"element":"Fire",
-     "effect":"Spend 2 Elements: 1 character gains +2 ATK until end of turn.",
-     "timing":"During Your Turn","slots":4,"hp":5,"art":"🔥","color":"#300800"},
-
-    # ── PSYCHIC CHARACTERS (nums 27-43) ──────────────────────────────────────
-    {"id":"ps01","name":"Wrath",            "type":"Character","subtype":"Psychic","cost":3,
-     "element":"Psychic","atk":2,"hp":3,"rarity":"SR",
-     "effect":"[Psychic SR] When deployed, gains +2 ATK for each Psychic character in your Storage Zone.",
-     "timing":"When Deployed","art":"😤","color":"#5a1a8a"},
-    {"id":"ps02","name":"Greed",            "type":"Character","subtype":"Psychic","cost":3,
-     "element":"Psychic","atk":1,"hp":3,"rarity":"SR",
-     "effect":"[Psychic SR] Draw 2 cards. Then, your opponent discards 1 card from their hand.",
-     "timing":"When Deployed","art":"💰","color":"#5a1a8a"},
-    {"id":"ps03","name":"Gluttony",         "type":"Character","subtype":"Psychic","cost":3,
-     "element":"Psychic","atk":2,"hp":3,"rarity":"SR",
-     "effect":"[Psychic SR] Look at your opponent's hand. Choose up to 2 cards to discard.",
-     "timing":"When Deployed","art":"🌀","color":"#5a1a8a"},
-    {"id":"ps04","name":"Spite",            "type":"Character","subtype":"Psychic","cost":1,
-     "element":"Psychic","atk":0,"hp":1,
-     "effect":"[When Deployed] Look at top 5 cards of your deck. Place 1 Psychic character with cost 3 or less into your hand.",
-     "timing":"When Deployed","art":"👁️","color":"#5a1a8a"},
-    {"id":"ps05","name":"Fury",             "type":"Character","subtype":"Psychic","cost":2,
-     "element":"Psychic","atk":1,"hp":2,
-     "effect":"[When Deployed] Deal 1 damage to a character on the Field.",
-     "timing":"When Deployed","art":"🔥","color":"#5a1a8a"},
-    {"id":"ps06","name":"Taboo",            "type":"Character","subtype":"Psychic","cost":1,
-     "element":"Psychic","atk":0,"hp":1,"keywords":["Defender"],
-     "effect":"[Defender] Trash this card from your hand: Block 1 attack damage.",
-     "timing":"Opponent's Turn","art":"🚫","color":"#5a1a8a"},
-    {"id":"ps07","name":"Pride",            "type":"Character","subtype":"Psychic","cost":2,
-     "element":"Psychic","atk":1,"hp":2,
-     "effect":"[When Deployed] All your Psychic characters gain +1 ATK until end of turn.",
-     "timing":"When Deployed","art":"🦚","color":"#5a1a8a"},
-    {"id":"ps08","name":"Malevolent",       "type":"Character","subtype":"Psychic","cost":2,
-     "element":"Psychic","atk":1,"hp":2,"keywords":["Only Once"],
-     "effect":"[Only Once] Negate 1 character effect activation.",
-     "timing":"Any Time","art":"😈","color":"#5a1a8a"},
-    {"id":"ps09","name":"Savage",           "type":"Character","subtype":"Psychic","cost":1,
-     "element":"Psychic","atk":1,"hp":1,
-     "effect":"[When Deployed] This character can attack the turn it is deployed.",
-     "timing":"When Deployed","art":"🔮","color":"#5a1a8a"},
-    {"id":"ps10","name":"Victorious",       "type":"Character","subtype":"Psychic","cost":2,
-     "element":"Psychic","atk":1,"hp":2,
-     "effect":"[When Deployed] Draw 1 card for each character your opponent controls.",
-     "timing":"When Deployed","art":"🏆","color":"#5a1a8a"},
-    {"id":"ps11","name":"Rage (Psychic)",   "type":"Character","subtype":"Psychic","cost":2,
-     "element":"Psychic","atk":2,"hp":2,
-     "effect":"[Psychic Character] When deployed, destroy 1 card in the Storage Zone.",
-     "timing":"When Deployed","art":"💢","color":"#5a1a8a"},
-    {"id":"ps12","name":"Malice",           "type":"Character","subtype":"Psychic","cost":2,
-     "element":"Psychic","atk":1,"hp":2,
-     "effect":"[When Deployed] Deal 1 damage to all characters on the Field.",
-     "timing":"When Deployed","art":"☠️","color":"#5a1a8a"},
-
-    # ── MERCENARY CHARACTERS (nums 45-57) ─────────────────────────────────────
-    {"id":"mc01","name":"Cain",             "type":"Character","subtype":"Mercenary","cost":6,
-     "element":"Dark","atk":2,"hp":2,"rarity":"SR",
-     "effect":"Discharge your Field Card. Remove all characters with 1 or less ATK from a player's Storage Zone. Then draw 2 cards.",
-     "timing":"When Deployed","art":"💣","color":"#1a1a1a"},
-    {"id":"mc02","name":"Noah",             "type":"Character","subtype":"Mercenary","cost":5,
-     "element":"Mercenary","atk":1,"hp":2,"rarity":"SR",
-     "cost_elements":{"Earth":4,"Electricity":1},
-     "effect":"[Mercenary SR] Return up to 2 Mercenary characters from your Trash to your hand.",
-     "timing":"When Deployed","art":"⛵","color":"#3a3a3a"},
-    {"id":"mc03","name":"Mary",             "type":"Character","subtype":"Mercenary","cost":1,
-     "element":"Dark","atk":0,"hp":1,
-     "effect":"[When Deployed] Add 1 Mercenary character with cost 2 or less from your deck to your hand.",
-     "timing":"When Deployed","art":"🌸","color":"#3a3a3a"},
-    {"id":"mc04","name":"Abel",             "type":"Character","subtype":"Mercenary","cost":1,
-     "element":"Dark","atk":0,"hp":2,
-     "effect":"[When Deployed] Move 1 Mercenary character with cost 2 or less from your deck or Storage Zone to your hand.",
-     "timing":"When Deployed","art":"🗡️","color":"#3a3a3a"},
-    {"id":"mc05","name":"Aaron",            "type":"Character","subtype":"Mercenary","cost":1,
-     "element":"Dark","atk":0,"hp":1,
-     "effect":"[When Deployed] Look at the top 3 cards of your deck. Add 1 Mercenary to your hand.",
-     "timing":"When Deployed","art":"🎯","color":"#3a3a3a"},
-    {"id":"mc06","name":"Azrael",           "type":"Character","subtype":"Mercenary","cost":4,
-     "element":"Dark","atk":2,"hp":3,"rarity":"SR",
-     "effect":"[Mercenary SR] Destroy 1 character on the Field.",
-     "timing":"When Deployed","art":"👼","color":"#1a1a2a"},
-    {"id":"mc07","name":"Gabriel",          "type":"Character","subtype":"Mercenary","cost":1,
-     "element":"Earth","atk":0,"hp":2,
-     "effect":"[When Deployed] Store 1 Mercenary character from your hand in the Storage Zone.",
-     "timing":"When Deployed","art":"🎺","color":"#3a3a3a"},
-    {"id":"mc08","name":"Ariel",            "type":"Character","subtype":"Mercenary","cost":1,
-     "element":"Earth","atk":0,"hp":1,
-     "effect":"Look at the top 4 cards of your deck. Store 1 Mercenary character, excluding Ariel. Place remaining cards on bottom.",
-     "timing":"When Deployed","art":"🌬️","color":"#3a3a3a"},
-    {"id":"mc09","name":"Raziel",           "type":"Character","subtype":"Mercenary","cost":1,
-     "element":"Dark","atk":0,"hp":2,"keywords":["Defender"],
-     "effect":"[Defender] Trash from hand: Block 1 attack damage. Then increase a character's ATK by 1.",
-     "timing":"Opponent's Turn","art":"🔫","color":"#3a3a3a"},
-    {"id":"mc10","name":"Engel",            "type":"Character","subtype":"Mercenary","cost":1,
-     "element":"Earth","atk":0,"hp":1,
-     "effect":"[When Deployed] Draw 1 card.",
-     "timing":"When Deployed","art":"🪶","color":"#3a3a3a"},
-    {"id":"mc11","name":"Raphael",          "type":"Character","subtype":"Mercenary","cost":1,
-     "element":"Earth","atk":0,"hp":2,
-     "effect":"[When Deployed] Return 1 Mercenary from your Trash to your Storage Zone.",
-     "timing":"When Deployed","art":"🌿","color":"#3a3a3a"},
-
-    # ── LIGHTNING CHARACTERS (nums 68-69) ─────────────────────────────────────
-    {"id":"lt01","name":"Saturn",           "type":"Character","subtype":"Lightning","cost":2,
-     "element":"Electricity","atk":1,"hp":2,
-     "effect":"[When Deployed] Give 1 character +1 ATK this turn.",
-     "timing":"When Deployed","art":"🪐","color":"#1a5a6a"},
-    {"id":"lt02","name":"Titan",            "type":"Character","subtype":"Lightning","cost":3,
-     "element":"Electricity","atk":2,"hp":2,
-     "effect":"[When Deployed] All your characters gain +1 ATK until end of turn.",
-     "timing":"When Deployed","art":"🌩️","color":"#1a5a6a"},
-
-    # ── ATLANTEAN CHARACTERS — Water (nums 78-91) ─────────────────────────────
-    {"id":"at01","name":"Gadeirus",         "type":"Character","subtype":"Atlantean","cost":5,
-     "element":"Water","atk":2,"hp":2,"rarity":"SR",
-     "effect":"Discharge all characters with value 4 or less until start of your next turn. Then Trash 1 discharged character with value 4 or less.",
-     "timing":"When Deployed","art":"🔱","color":"#0a4a6a"},
-    {"id":"at02","name":"Smoker",           "type":"Character","subtype":"Atlantean","cost":1,
-     "element":"Water","atk":1,"hp":1,
-     "effect":"Once Per Turn: Trash 1 card from hand. Look at top 5 cards of deck; add 1 Atlantean character to hand. Rearrange rest.",
-     "timing":"During Your Turn","art":"💨","color":"#0a4a6a"},
-    {"id":"at03","name":"Atlas",            "type":"Character","subtype":"Atlantean","cost":2,
-     "element":"Water","atk":2,"hp":1,
-     "effect":"[When Deployed] Trash 1 discharged character with value 2 or less from Field or Storage Zone.",
-     "timing":"When Deployed","art":"🌊","color":"#0a4a6a"},
-    {"id":"at04","name":"Ampheres",         "type":"Character","subtype":"Atlantean","cost":3,
-     "element":"Water","atk":2,"hp":1,"rarity":"SR","keywords":["Only Once"],
-     "effect":"[Only Once] Discharge 1 character with value 2 or less. Then Trash 1 discharged character with value 3 or less.",
-     "timing":"Any Time","art":"🐙","color":"#0a4a6a"},
-    {"id":"at05","name":"Diaprepes",        "type":"Character","subtype":"Atlantean","cost":2,
-     "element":"Water","atk":1,"hp":1,"keywords":["Only Once"],
-     "effect":"[Only Once] Discharge your Field Card: Play 1 Event card with value 3 or less from your hand.",
-     "timing":"Any Time","art":"🌀","color":"#0a4a6a"},
-    {"id":"at06","name":"Azaes",            "type":"Character","subtype":"Atlantean","cost":2,
-     "element":"Water","atk":1,"hp":1,"keywords":["Only Once"],
-     "effect":"[Only Once] Discharge 1 Character until start of your next turn.",
-     "timing":"During Your Turn","art":"⚡","color":"#0a4a6a"},
-    {"id":"at07","name":"Mestor",           "type":"Character","subtype":"Atlantean","cost":2,
-     "element":"Water","atk":1,"hp":1,"keywords":["Defender"],
-     "effect":"[Defender / When Deployed] Reduce value of all opponent's characters by 1. Then draw 1 card.",
-     "timing":"When Deployed","art":"🛡","color":"#0a4a6a"},
-    {"id":"at08","name":"Makaira",          "type":"Character","subtype":"Atlantean","cost":1,
-     "element":"Water","atk":0,"hp":1,
-     "effect":"[When Deployed] Draw 2 cards from top of deck. Then Trash 1 card from your hand.",
-     "timing":"When Deployed","art":"🐬","color":"#0a4a6a"},
-    {"id":"at09","name":"Topo",             "type":"Character","subtype":"Atlantean","cost":2,
-     "element":"Water","atk":1,"hp":1,"keywords":["Defender"],
-     "effect":"[Defender] When you block: Discharge 1 character with value 3 or less until end of turn.",
-     "timing":"Opponent's Turn","art":"🦭","color":"#0a4a6a"},
-    {"id":"at10","name":"Cerdian",          "type":"Character","subtype":"Atlantean","cost":1,
-     "element":"Water","atk":0,"hp":1,
-     "effect":"[When Deployed] Add 1 Event from your Storage Zone to your hand.",
-     "timing":"When Deployed","art":"🐠","color":"#0a4a6a"},
-    {"id":"at11","name":"Ondine",           "type":"Character","subtype":"Atlantean","cost":0,
-     "element":"Water","atk":0,"hp":1,
-     "effect":"[Any Time] If this card is in your hand, you may store it in the Storage Zone at any time.",
-     "timing":"Any Time","art":"🧜","color":"#0a4a6a"},
-    {"id":"at12","name":"Cetea",            "type":"Character","subtype":"Atlantean","cost":1,
-     "element":"Water","atk":1,"hp":1,
-     "effect":"[Any Time] Trash this card to Trash a discharged character in the Storage Zone.",
-     "timing":"Any Time","art":"🐋","color":"#0a4a6a"},
-
-    # ── HOLY KNIGHT CHARACTERS — Earth (nums 93-97) ───────────────────────────
-    {"id":"hk01","name":"Odon",            "type":"Character","subtype":"Holy Knight","cost":6,
-     "element":"Earth","atk":2,"hp":2,"rarity":"SR","keywords":["Defender","Only Once"],
-     "effect":"[Defender SR / Only Once] Discharge a Field Card you control: Negate the activation of a card and Trash it.",
-     "timing":"Any Time","art":"🏰","color":"#6a5a1a"},
-    {"id":"hk02","name":"Heracles",         "type":"Character","subtype":"Holy Knight","cost":6,
-     "element":"Earth","atk":1,"hp":2,"rarity":"SR","keywords":["Only Once"],
-     "effect":"[Only Once] Play 1 Trigger card or Trigger character from Trash. Then give 1 other character +1 Health.",
-     "timing":"Any Time","art":"⚔️","color":"#6a5a1a"},
-    {"id":"hk03","name":"Aion",             "type":"Character","subtype":"Holy Knight","cost":2,
-     "element":"Earth","atk":1,"hp":1,"keywords":["Only Once"],
-     "effect":"[Only Once] Trash a Trigger Card in your Storage Zone: Negate the activation of a character's effect.",
-     "timing":"Any Time","art":"⏳","color":"#6a5a1a"},
-    {"id":"hk04","name":"Hermes",           "type":"Character","subtype":"Holy Knight","cost":1,
-     "element":"Earth","atk":0,"hp":1,
-     "effect":"[When Deployed] Look at your deck. Add 1 Holy Knight character with value 3 or less to your hand (not Hermes). Shuffle deck.",
-     "timing":"When Deployed","art":"🪶","color":"#6a5a1a"},
-    {"id":"hk05","name":"Ares",             "type":"Character","subtype":"Holy Knight","cost":1,
-     "element":"Earth","atk":0,"hp":1,
-     "effect":"Bottom deck 1 card from hand. Look at top 5 cards; add 1 Trigger card to hand. Place rest on bottom.",
-     "timing":"During Your Turn","art":"🛡️","color":"#6a5a1a"},
-
-    # ── INFERNO CHARACTERS — Fire (nums 109, 118, 119, 122) ──────────────────
-    {"id":"if01","name":"Napu",             "type":"Character","subtype":"Inferno","cost":2,
-     "element":"Fire","atk":1,"hp":1,
-     "effect":"Once Per Turn: When you attack a character, store top card of deck. Then may return a character from Storage Zone to hand.",
-     "timing":"During Your Turn","art":"🌋","color":"#6a1a0a"},
-    {"id":"if02","name":"Komodo",           "type":"Character","subtype":"Inferno","cost":0,
-     "element":"Fire","atk":0,"hp":1,
-     "effect":"[Any Time] Bottom deck 1 character with value 2 or less from field. Then trash this card.",
-     "timing":"Any Time","art":"🦎","color":"#6a1a0a"},
-    {"id":"if03","name":"Crow",             "type":"Character","subtype":"Inferno","cost":2,
-     "element":"Fire","atk":1,"hp":1,
-     "effect":"[When Deployed] Draw 2 cards. Place 1 card from hand on bottom of deck. Reduce value of all opponent's Field characters by 2.",
-     "timing":"When Deployed","art":"🐦","color":"#6a1a0a"},
-    {"id":"if04","name":"Leo",              "type":"Character","subtype":"Inferno","cost":6,
-     "element":"Fire","atk":1,"hp":2,"rarity":"SR",
-     "effect":"[When Deployed] Play up to 2 characters with value 2 or less from Trash. Your characters can attack this turn (except Leo).",
-     "timing":"When Deployed","art":"🦁","color":"#6a1a0a"},
-
-    # ── RAD CHARACTERS — Dark (nums 125, 127, 130, 131, 133) ─────────────────
-    {"id":"rd01","name":"Boron",            "type":"Character","subtype":"RAD","cost":2,
-     "element":"Dark","atk":1,"hp":1,
-     "effect":"[When Deployed] Discard 2 cards from a Player's hand if they have 7+. If discarded from top of deck, -1 health to a character.",
-     "timing":"When Deployed","art":"🧪","color":"#1a4a1a"},
-    {"id":"rd02","name":"Neon",             "type":"Character","subtype":"RAD","cost":1,
-     "element":"Dark","atk":0,"hp":1,
-     "effect":"[When Deployed] Look at bottom 3 cards of deck. Choose 1 RAD character with value 3 or less to store; rearrange rest on top.",
-     "timing":"When Deployed","art":"💡","color":"#1a4a1a"},
-    {"id":"rd03","name":"Silver",           "type":"Character","subtype":"RAD","cost":3,
-     "element":"Dark","atk":1,"hp":1,"rarity":"SR",
-     "effect":"[On Removal] If removed by battle, your Field Card gains 1 life. If discarded from top of deck, reduce a character's Health by 1.",
-     "timing":"On Removal","art":"☣️","color":"#1a4a1a"},
-    {"id":"rd04","name":"Xenon",            "type":"Character","subtype":"RAD","cost":1,
-     "element":"Dark","atk":1,"hp":1,"keywords":["Only Once"],
-     "effect":"[Only Once] Bottom deck up to 4 RAD cards from Trash (not Xenon). If discarded from top of deck, reduce a character's Health by 1.",
-     "timing":"Any Time","art":"⚗️","color":"#1a4a1a"},
-    {"id":"rd05","name":"Nitro",            "type":"Character","subtype":"RAD","cost":3,
-     "element":"Dark","atk":1,"hp":2,"keywords":["Defender"],
-     "effect":"[Defender / When Deployed] Discard top 2 cards of deck. Your other characters cannot be Removed from Field until your next turn.",
-     "timing":"When Deployed","art":"💣","color":"#1a4a1a"},
-]
+def fetch_and_cache_image(name):
+    """Fetch a card image from Google Drive and cache it locally.
+    Returns (bytes, content_type) or (None, None) on failure."""
+    file_id = CARD_FILE_IDS.get(name, '')
+    if not file_id:
+        return None, None
+    # Safe filename: replace special chars
+    safe = name.replace('/', '_').replace('\\', '_').replace(':', '_')
+    cache_path = os.path.join(IMAGES_DIR, safe + '.jpg')
+    if os.path.exists(cache_path):
+        with open(cache_path, 'rb') as f:
+            return f.read(), 'image/jpeg'
+    # Fetch from Google Drive
+    url = f'https://drive.google.com/thumbnail?id={file_id}&sz=w400'
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = resp.read()
+        with open(cache_path, 'wb') as f:
+            f.write(data)
+        return data, 'image/jpeg'
+    except Exception as e:
+        print(f'[img] Failed to fetch {name}: {e}')
+        return None, None
 
 # ── Starting field card per element ──────────────────────────────────────────
 STARTING_FIELD = {
@@ -345,6 +88,43 @@ FIELD_LIVES = {
     "fl04": 3,  # The Cementary — Dark/RAD only gets 3 lives
 }
 
+# ── Helper: build deck from deck-builder saved deckMap {name: count} ─────────
+def build_deck_from_saved(deck_map):
+    """Convert deck-builder deckMap {card_name: count} → shuffled list of card IDs."""
+    name_to_id = {c["name"]: c["id"] for c in CARDS}
+    ids = []
+    for name, count in deck_map.items():
+        cid = name_to_id.get(name)
+        if cid:
+            ids.extend([cid] * int(count))
+    random.shuffle(ids)
+    return ids
+
+def detect_element_from_saved(deck_map):
+    """Auto-detect the primary element from a deckMap {name: count}."""
+    name_to_card = {c["name"]: c for c in CARDS}
+    el_count = {el: 0 for el in ELEMENTS}
+    for name, count in deck_map.items():
+        card = name_to_card.get(name)
+        if card:
+            el = card.get("element")
+            if el in ELEMENTS:
+                el_count[el] = el_count.get(el, 0) + int(count)
+    best = max(el_count, key=el_count.get)
+    return best if el_count[best] > 0 else "Water"
+
+def element_from_field_card(field_card_name):
+    """Return the element for a field card by name (e.g. 'The Fire Temple' → 'Fire').
+    Returns None if the name is None or not found."""
+    if not field_card_name:
+        return None
+    for c in CARDS:
+        if c.get("name") == field_card_name and c.get("type") == "Field":
+            el = c.get("element")
+            if el in ELEMENTS:
+                return el
+    return None
+
 # ── Helper: build a starter deck ─────────────────────────────────────────────
 def build_deck(element_choice):
     """Build a 40-card starter deck by element.
@@ -353,20 +133,25 @@ def build_deck(element_choice):
     element_map = {
         # Water — Atlantean characters + water triggers/events
         "Water": ["at01","at02","at03","at04","at05","at06","at07","at08","at09","at10",
-                  "at11","at12","ev01","ev02","ev03","tr01","tr02","tr03","tr04"],
+                  "at11","at12","at13","at14","at15","ev01","ev02","ev03","tr01","tr02","tr03","tr04"],
         # Fire — Inferno characters + fire triggers/events
-        "Fire":  ["if01","if02","if03","if04","ev01","ev03","ev06","tr02","tr06"],
+        "Fire":  ["if01","if02","if03","if04","if05","if06","if07","if08","if09","if10",
+                  "if11","if12","if13","if14","if15","ev01","ev03","ev06","tr02","tr06"],
         # Earth — Holy Knight characters + earth triggers/events
-        "Earth": ["hk01","hk02","hk03","hk04","hk05","ev01","ev03","ev04","tr02","tr03",
+        "Earth": ["hk01","hk02","hk03","hk04","hk05","hk06","hk07","hk08","hk09","hk10",
+                  "hk11","hk12","hk13","hk14","hk15","ev01","ev03","ev04","tr02","tr03",
                   "tr06","tr08"],
         # Electricity — Lightning characters + electricity events
-        "Electricity": ["lt01","lt02","ev01","ev04","ev05","ev07","tr02","tr04"],
+        "Electricity": ["lt01","lt02","lt03","lt04","lt05","lt06","lt07","lt08","lt09","lt10",
+                  "lt11","lt12","lt13","lt14","lt15","ev01","ev04","ev05","ev07","tr02","tr04"],
         # Psychic — Psychic characters + psychic events/triggers
         "Psychic": ["ps01","ps02","ps03","ps04","ps05","ps06","ps07","ps08","ps09","ps10",
-                    "ps11","ps12","ev01","ev07","tr02","tr05"],
+                    "ps11","ps12","ps13","ps14","ps15","ps16","ps17","ev01","ev07","tr02","tr05"],
         # Dark — Mercenary + RAD characters + dark events/triggers
         "Dark": ["mc01","mc02","mc03","mc04","mc05","mc06","mc07","mc08","mc09","mc10",
-                 "mc11","rd01","rd02","rd03","rd04","rd05","ev01","ev06","ev08","tr07"],
+                 "mc11","mc12","mc13","mc14","mc15","rd01","rd02","rd03","rd04","rd05",
+                 "rd06","rd07","rd08","rd09","rd10","rd11","rd12","rd13","rd14","rd15",
+                 "ev01","ev06","ev08","tr07"],
     }
     pool = element_map.get(element_choice, element_map["Water"])
     deck_ids = (pool * 4)[:40]
@@ -583,9 +368,11 @@ def action_attack(game, player_idx, attacker_iid, target_type, target_ref=None):
         return False, "Character is discharged"
     if attacker.get("justDeployed"):
         return False, "This character was just deployed and cannot attack this turn"
-    attacker["charged"] = False
     card = card_by_id(attacker["cardId"])
     atk = card.get("atk", 0)
+    if atk == 0:
+        return False, f"{card['name']} has 0 ATK and cannot attack"
+    attacker["charged"] = False
     if target_type == "character" and target_ref:
         target = next((c for c in op["field"] if c["instanceId"] == target_ref), None)
         if not target:
@@ -786,6 +573,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_file("deck-builder.html", "text/html")
         elif path == "/cards":
             self.send_json(CARDS)
+        elif path == "/img":
+            name = qs.get("name", [None])[0]
+            if not name:
+                self.send_response(400); self.end_headers(); return
+            data, ctype = fetch_and_cache_image(name)
+            if data is None:
+                self.send_response(404); self.end_headers(); return
+            self.send_response(200)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "public, max-age=86400")
+            self.end_headers()
+            self.wfile.write(data)
+            return
         elif path == "/state":
             room_id = qs.get("room", [None])[0]
             secret  = qs.get("secret", [None])[0]
@@ -814,30 +615,45 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         with lock:
             if path == "/create":
-                element = body.get("element", "Water")
+                deck_map = body.get("deckMap")   # {name: count} from deck builder
+                field_card_name = body.get("fieldCard")  # field card chosen in deck builder
+                element = element_from_field_card(field_card_name) or (
+                    detect_element_from_saved(deck_map) if deck_map else body.get("element", "Water")
+                )
                 room_id = str(uuid.uuid4())[:6].upper()
                 game = make_game(element, "Water")  # P2 element set on join
+                # Use custom deck if provided
+                if deck_map:
+                    p1 = game["players"][0]
+                    custom = build_deck_from_saved(deck_map)
+                    p1["hand"] = custom[:5]
+                    p1["deck"] = custom[5:]
                 game["p1_joined"] = True
                 rooms[room_id] = game
                 self.send_json({"roomId": room_id, "secret": game["p1_secret"], "playerIndex": 0})
 
             elif path == "/quickjoin":
                 # Auto-join the first open room — no room code needed
-                element = body.get("element", "Water")
+                deck_map = body.get("deckMap")
+                field_card_name = body.get("fieldCard")
+                element = element_from_field_card(field_card_name) or (
+                    detect_element_from_saved(deck_map) if deck_map else body.get("element", "Water")
+                )
                 open_room = next((r for r in rooms if not rooms[r].get("p2_joined") and rooms[r].get("p1_joined")), None)
                 if not open_room:
                     self.send_json({"error": "No open rooms. Have P1 create a game first."}, 404); return
-                body["roomId"] = open_room
-                # Fall through to join logic below
                 room_id = open_room
                 game = rooms[room_id]
                 game["p2_joined"] = True
                 game["started"] = True
                 p2 = game["players"][1]
                 p2["element"] = element
-                deck_ids = build_deck(element)
-                p2["hand"] = deck_ids[:6]
-                p2["deck"] = deck_ids[6:]
+                if deck_map:
+                    deck_ids = build_deck_from_saved(deck_map)
+                else:
+                    deck_ids = build_deck(element)
+                p2["hand"] = deck_ids[:5]
+                p2["deck"] = deck_ids[5:]
                 p2["storesThisTurn"] = 0
                 p2["extraStores"] = 0
                 p2["gainedElementThisTurn"] = False
@@ -853,7 +669,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
             elif path == "/join":
                 room_id = body.get("roomId", "").upper()
-                element = body.get("element", "Water")
+                deck_map = body.get("deckMap")
+                field_card_name = body.get("fieldCard")
+                element = element_from_field_card(field_card_name) or (
+                    detect_element_from_saved(deck_map) if deck_map else body.get("element", "Water")
+                )
                 if room_id not in rooms:
                     self.send_json({"error": "Room not found"}, 404); return
                 game = rooms[room_id]
@@ -861,12 +681,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     self.send_json({"error": "Room is full"}, 400); return
                 game["p2_joined"] = True
                 game["started"] = True
-                # Rebuild P2 with chosen element
+                # Rebuild P2 with chosen deck or element
                 p2 = game["players"][1]
                 p2["element"] = element
-                deck_ids = build_deck(element)
-                p2["hand"] = deck_ids[:6]   # P2 starts with 6 cards
-                p2["deck"] = deck_ids[6:]
+                if deck_map:
+                    deck_ids = build_deck_from_saved(deck_map)
+                else:
+                    deck_ids = build_deck(element)
+                p2["hand"] = deck_ids[:5]   # P2 starts with 5 cards
+                p2["deck"] = deck_ids[5:]
                 p2["storesThisTurn"] = 0
                 p2["extraStores"] = 0
                 p2["gainedElementThisTurn"] = False
@@ -882,18 +705,32 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.send_json({"roomId": room_id, "secret": game["p2_secret"], "playerIndex": 1})
 
             elif path == "/solo":
-                el1 = body.get("element1", "Water")
-                el2 = body.get("element2", "Water")
+                dm1 = body.get("deckMap1")
+                dm2 = body.get("deckMap2")
+                fc1_name = body.get("fieldCard1")
+                fc2_name = body.get("fieldCard2")
+                el1 = element_from_field_card(fc1_name) or (
+                    detect_element_from_saved(dm1) if dm1 else body.get("element1", "Water")
+                )
+                el2 = element_from_field_card(fc2_name) or (
+                    detect_element_from_saved(dm2) if dm2 else body.get("element2", "Water")
+                )
                 room_id = str(uuid.uuid4())[:6].upper()
                 game = make_game(el1, el2)
                 game["p1_joined"] = True
                 game["p2_joined"] = True
                 game["started"] = True
-                deck2 = build_deck(el2)
+                # Apply custom decks
+                if dm1:
+                    p1 = game["players"][0]
+                    d1 = build_deck_from_saved(dm1)
+                    p1["hand"] = d1[:5]
+                    p1["deck"] = d1[5:]
+                deck2 = build_deck_from_saved(dm2) if dm2 else build_deck(el2)
                 p2 = game["players"][1]
                 p2["element"] = el2
-                p2["hand"] = deck2[:6]
-                p2["deck"] = deck2[6:]
+                p2["hand"] = deck2[:5]
+                p2["deck"] = deck2[5:]
                 # Also fix p2 starting field card
                 game["fieldCards"][1] = make_starting_fc(el2)
                 game["log"].append("Solo Practice Mode started!")

@@ -46,6 +46,29 @@ header p{font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.25em;color:
 .el-lock-badge.locked-Dark{background:var(--dark-bg);color:var(--dark);border-color:var(--dark-border)}
 .el-lock-badge.locked-Psychic{background:var(--psychic-bg);color:var(--psychic);border-color:var(--psychic-border)}
 
+/* ── FIELD CARD PICKER ── */
+.fc-picker{margin:.3rem 0 .6rem;padding:.55rem .6rem;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius)}
+.fc-picker-title{font-family:'Cinzel',serif;font-size:.6rem;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.4rem;display:flex;align-items:center;gap:.4rem}
+.fc-picker-title span{color:var(--gold)}
+.fc-grid{display:flex;gap:.35rem;flex-wrap:wrap}
+.fc-tile{width:58px;cursor:pointer;border-radius:6px;overflow:hidden;border:2px solid var(--border2);transition:all .18s;opacity:.6;flex-shrink:0}
+.fc-tile:hover{border-color:var(--gold);opacity:1;transform:translateY(-2px)}
+.fc-tile.fc-selected{opacity:1;transform:translateY(-2px)}
+.fc-tile.fc-selected.el-Fire{border-color:var(--fire);box-shadow:0 0 10px rgba(232,84,29,.5)}
+.fc-tile.fc-selected.el-Water{border-color:var(--water);box-shadow:0 0 10px rgba(29,122,232,.5)}
+.fc-tile.fc-selected.el-Earth{border-color:var(--earth);box-shadow:0 0 10px rgba(155,122,32,.5)}
+.fc-tile.fc-selected.el-Electricity{border-color:var(--electricity);box-shadow:0 0 10px rgba(232,192,29,.5)}
+.fc-tile.fc-selected.el-Dark{border-color:var(--dark);box-shadow:0 0 10px rgba(155,45,232,.5)}
+.fc-tile.fc-selected.el-Psychic{border-color:var(--psychic);box-shadow:0 0 10px rgba(29,232,138,.5)}
+.fc-tile img{width:100%;height:78px;object-fit:cover;display:block}
+.fc-tile .fc-label{font-family:'Cinzel',serif;font-size:.4rem;color:var(--text2);padding:.18rem .18rem;text-align:center;background:var(--surface3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fc-none-hint{font-size:.7rem;color:var(--text3);font-style:italic;padding:.4rem 0}
+.deck-fc-row{display:flex;align-items:center;gap:.5rem;padding:.4rem .5rem;border-radius:8px;background:var(--surface2);border:1px solid var(--border2);margin-bottom:.5rem}
+.deck-fc-row img{width:36px;height:50px;object-fit:cover;border-radius:4px;flex-shrink:0}
+.deck-fc-info{flex:1;min-width:0}
+.deck-fc-name{font-family:'Cinzel',serif;font-size:.65rem;color:var(--gold-light)}
+.deck-fc-el{font-size:.6rem;color:var(--text3)}
+
 /* ── TABS ── */
 .tabs{display:flex;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20;background:var(--bg)}
 .tab-btn{flex:1;padding:.65rem .3rem;font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.08em;
@@ -329,6 +352,11 @@ header p{font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.25em;color:
         <button class="cf-btn" data-cost="5">5</button>
         <button class="cf-btn" data-cost="6+">6+</button>
       </div>
+      <!-- Field Card Picker -->
+      <div class="fc-picker" id="fc-picker">
+        <div class="fc-picker-title">⚔ <span>Step 1</span> — Choose your Field Card to unlock deck building:</div>
+        <div class="fc-grid" id="fc-picker-grid"></div>
+      </div>
       <div class="results-info" id="results-info"></div>
     </div>
     <div class="controls-spacer"></div>
@@ -436,7 +464,11 @@ const EL={Fire:'🔥',Water:'💧',Electricity:'⚡',Earth:'🌍',Dark:'🌑',Ps
 const TC={'When Deployed':'rb-deployed','During Your Turn':'rb-turn','On Attack':'rb-attack','On Lethal':'rb-once','Any Time':'rb-anytime','Any Time / Once Only':'rb-anytime','Opponents Turn':'rb-opp','Once Per Turn':'rb-turn','On Sacrifice':'rb-once'};
 const MAX_COPIES = 2;  // max copies of same card in a deck
 
+// Images are now served via the local proxy server (no more Google Drive rate limits).
+// The thumb() function is kept so the SEED array still compiles — but images get
+// remapped to /img?name=CardName right after allCards is built (see below).
 function thumb(id){return`https://drive.google.com/thumbnail?id=${id}&sz=w400`;}
+function cardImg(name){return'/img?name='+encodeURIComponent(name);}
 
 const DRIVE=[
   {fileId:'1qvdi8RgGi8mYlEul7GdzadHBMgZVxNwu',num:1},{fileId:'17dUQ3O3ajsLIB4cmj4k33Js-GnRAx7Kp',num:2},
@@ -499,7 +531,7 @@ const SEED=[
   {id:'CD-01',setId:'TC-08',name:'Storage Space',type:'Trigger',group:'',elements:['Fire','Water','Electricity','Earth','Dark','Psychic'],value:0,attack:0,health:0,rarity:'',timing:'Any Time',ability:'Store up to 2 cards from your hand in the Storage Zone.',img:thumb('1uRzBhDJEgBXzDeGGTPFsaIZtyqllpImY'),driveNum:16,fileId:'1uRzBhDJEgBXzDeGGTPFsaIZtyqllpImY'},
 
   // ── FIELD CARDS ────────────────────────────────────────────────────────────
-  {id:'CD-01',setId:'FL-01',name:'The Cove',type:'Field',group:'',elements:['Water'],value:0,attack:0,health:5,rarity:'',timing:'During Your Turn',ability:'Look at the top 4 cards of your deck or your opponent\'s deck. Rearrange those cards in any order and place them back on top.',img:thumb('1YzUAy9MlSOovrVbgO46sy6nBYBM1hz00'),driveNum:26,fileId:'1YzUAy9MlSOovrVbgO46sy6nBYBM1hz00'},
+  {id:'CD-01',setId:'FL-01',name:'The Cove',type:'Field',group:'',elements:['Psychic'],value:0,attack:0,health:5,rarity:'',timing:'During Your Turn',ability:'Spend 1 Element: Look at the top 3 cards of your deck or your opponent\'s deck. Rearrange those cards in any order and place them back on top.',img:thumb('1YzUAy9MlSOovrVbgO46sy6nBYBM1hz00'),driveNum:26,fileId:'1YzUAy9MlSOovrVbgO46sy6nBYBM1hz00'},
   {id:'CD-01',setId:'FL-02',name:'The Ruins',type:'Field',group:'',elements:['Earth'],value:0,attack:0,health:5,rarity:'',timing:'During Your Turn',ability:'1 Earth Element: to Trash 🗑️ 1 Character with an Attack of 0.',img:thumb('1CQv2gCHqK_RuY7UFfjjxmEr2_hTXrSbz'),driveNum:26,fileId:'1CQv2gCHqK_RuY7UFfjjxmEr2_hTXrSbz'},
   {id:'CD-01',setId:'FL-03',name:'Sky Light City',type:'Field',group:'',elements:['Electricity'],value:0,attack:0,health:5,rarity:'',timing:'During Your Turn',ability:'Spend 1 Element: One of your characters on the field can attack this turn, even if it was just played.',img:thumb('1AWP_r7ZK0RPgHrhfwEKlXndN76aZTAua'),driveNum:0,fileId:'1AWP_r7ZK0RPgHrhfwEKlXndN76aZTAua'},
   {id:'CD-01',setId:'FL-04',name:'The City of Rapture',type:'Field',group:'',elements:['Water'],value:0,attack:0,health:5,rarity:'',timing:'During Your Turn',ability:'Spend 1 Element: Discharge 1 character with a value of 2 or less until the start of your next turn.',img:thumb('1hvE_1AffzOYii-OwtwH2M0M0PHJfu9ia'),driveNum:0,fileId:'1hvE_1AffzOYii-OwtwH2M0M0PHJfu9ia'},
@@ -538,10 +570,27 @@ const SEED=[
   {id:'CD-01',setId:'MC-09',name:'Raziel',type:'Character',group:'Mercenary',elements:['Dark'],value:1,attack:0,health:2,rarity:'Defender',timing:'Opponent\'s Turn',ability:'[Defender] Trash this card from your hand: Block 1 attack damage. Then increase a character\'s ATK by 1.',img:thumb('1lqgLobZBCqquVizcbK7SOrSEdbUHf8TA'),driveNum:55,fileId:'1lqgLobZBCqquVizcbK7SOrSEdbUHf8TA'},
   {id:'CD-01',setId:'MC-10',name:'Engel',type:'Character',group:'Mercenary',elements:['Earth'],value:1,attack:0,health:1,rarity:'',timing:'When Deployed',ability:'[When Deployed] Draw 1 card.',img:thumb('1Ilvy70IlPpFRAUoJNnii6DoSunY3vnX8'),driveNum:56,fileId:'1Ilvy70IlPpFRAUoJNnii6DoSunY3vnX8'},
   {id:'CD-01',setId:'MC-11',name:'Raphael',type:'Character',group:'Mercenary',elements:['Earth'],value:1,attack:0,health:2,rarity:'',timing:'When Deployed',ability:'[When Deployed] Return 1 Mercenary from your Trash to your Storage Zone.',img:thumb('1L3563yUl9gTh-dcZbav-xAH5OzyRjn9p'),driveNum:57,fileId:'1L3563yUl9gTh-dcZbav-xAH5OzyRjn9p'},
+  {id:'CD-01',setId:'ST02-04',name:'Joseph',type:'Character',group:'Mercenary',elements:['Earth'],value:2,attack:1,health:1,rarity:'Defender',timing:'When Deployed',ability:'[Defender] Discard 1 card at random from your opponent\'s hand. Then draw 1 card. [Trash from hand: Block 1 attack damage]',img:thumb('1SXhmCJOsgiZbbg5nOnDkTyyivKYhmHcz'),driveNum:0,fileId:'1SXhmCJOsgiZbbg5nOnDkTyyivKYhmHcz'},
+  {id:'CD-01',setId:'ST02-05',name:'Leah',type:'Character',group:'Mercenary',elements:['Earth'],value:2,attack:1,health:1,rarity:'',timing:'When Deployed',ability:'[When Deployed] All characters on your opponent\'s Field get -1 Attack.',img:thumb('1w0RrbAHYJ54lv_0SqNZctzT5wmRenuwD'),driveNum:0,fileId:'1w0RrbAHYJ54lv_0SqNZctzT5wmRenuwD'},
+  {id:'CD-01',setId:'ST02-14',name:'Elijah',type:'Character',group:'Mercenary',elements:['Earth'],value:1,attack:0,health:1,rarity:'',timing:'Any Time',ability:'[Any Time] If this card is in your hand, you may store it in the Storage Zone at any time.',img:thumb('16fE2tvShIL0a1bSLmd68fKDHewu7KOpg'),driveNum:0,fileId:'16fE2tvShIL0a1bSLmd68fKDHewu7KOpg'},
+  {id:'CD-01',setId:'ST02-15',name:'Hannah',type:'Character',group:'Mercenary',elements:['Earth'],value:1,attack:0,health:1,rarity:'',timing:'Any Time',ability:'[Only Once / Any Time] Trash 1 card from your Storage Zone. Then draw 2 cards.',img:thumb('1qzkR_FTpTUXaCI9VpSK9tctiBeQdePau'),driveNum:0,fileId:'1qzkR_FTpTUXaCI9VpSK9tctiBeQdePau'},
 
   // ── LIGHTNING CHARACTERS (nums 68-69) ─────────────────────────────────────
   {id:'CD-01',setId:'LT-01',name:'Saturn',type:'Character',group:'Lightning',elements:['Electricity'],value:2,attack:1,health:2,rarity:'',timing:'When Deployed',ability:'[Lightning Character] When deployed, give 1 character +1 ATK this turn.',img:thumb('1m9kMirNs2DtZPahyVECCzxsPYGJSla2e'),driveNum:68,fileId:'1m9kMirNs2DtZPahyVECCzxsPYGJSla2e'},
   {id:'CD-01',setId:'LT-02',name:'Titan',type:'Character',group:'Lightning',elements:['Electricity'],value:3,attack:2,health:2,rarity:'',timing:'When Deployed',ability:'[Lightning Character] When deployed, all your characters gain +1 ATK until end of turn.',img:thumb('1XmxfHpdXSE2ht_xN2fzmxTXwVL3BIwwX'),driveNum:69,fileId:'1XmxfHpdXSE2ht_xN2fzmxTXwVL3BIwwX'},
+  {id:'CD-01',setId:'LT-03',name:'Jupiter',type:'Character',group:'Lightning',elements:['Electricity'],value:2,attack:1,health:1,rarity:'',timing:'When Deployed',ability:'Choose a Lightning character (other than Jupiter) with a value 2 or less. It gains +1 ATK for one battle!',img:thumb('1OnQHBeCfx2IKmfhsxh-loci3JBFp5DQB'),driveNum:0,fileId:'1OnQHBeCfx2IKmfhsxh-loci3JBFp5DQB'},
+  {id:'CD-01',setId:'LT-04',name:'Luna',type:'Character',group:'Lightning',elements:['Electricity'],value:2,attack:1,health:1,rarity:'',timing:'When Deployed',ability:'Return 1 character with a value of 3 or less to its owner\'s hand. Then, randomly Trash 1 card from that player\'s hand.',img:thumb('1hrHJvHb044ksIu_R9upTS0SsO5xBED3U'),driveNum:0,fileId:'1hrHJvHb044ksIu_R9upTS0SsO5xBED3U'},
+  {id:'CD-01',setId:'LT-05',name:'Mars',type:'Character',group:'Lightning',elements:['Electricity'],value:4,attack:1,health:1,rarity:'SR',timing:'When Deployed',ability:'Return all characters on the Field to their owners\' hands, except this card.',img:thumb('1fvTj4z1kndMo4pLOwPe-l7nMwRRtukc6'),driveNum:0,fileId:'1fvTj4z1kndMo4pLOwPe-l7nMwRRtukc6'},
+  {id:'CD-01',setId:'LT-06',name:'Mercury',type:'Character',group:'Lightning',elements:['Electricity','Earth'],value:2,attack:1,health:1,rarity:'',timing:'During Your Turn',ability:'[Rush] When you attack, draw 2 cards from the top of your deck. Then, discard 1 card from your hand to the Trash. [This card can attack the same turn it is played!]',img:thumb('1pipVso36e7kxwpY8cQx_vwTdPZqb680e'),driveNum:0,fileId:'1pipVso36e7kxwpY8cQx_vwTdPZqb680e'},
+  {id:'CD-01',setId:'LT-07',name:'Neptune',type:'Character',group:'Lightning',elements:['Electricity'],value:1,attack:0,health:1,rarity:'',timing:'When Deployed',ability:'Store 1 card from your hand. Then, you may return 1 character with a value of 2 or less from the Field to its owner\'s hand.',img:thumb('1ay47Ol8sLHZBXYi2Z94VFO3JzxMRWY3q'),driveNum:0,fileId:'1ay47Ol8sLHZBXYi2Z94VFO3JzxMRWY3q'},
+  {id:'CD-01',setId:'LT-08',name:'Pegasi',type:'Character',group:'Lightning',elements:['Electricity','Earth'],value:6,attack:2,health:1,rarity:'SR',timing:'When Deployed',ability:'Look at the top 4 cards of your deck. Add 1 to your hand, place the rest at the bottom in any order. You may then play 1 card from your hand (except Pegasi).',img:thumb('1s-Gu58x0rjFkeypt8wcDp8FPqEuzt42a'),driveNum:0,fileId:'1s-Gu58x0rjFkeypt8wcDp8FPqEuzt42a'},
+  {id:'CD-01',setId:'LT-09',name:'Polaris',type:'Character',group:'Lightning',elements:['Electricity'],value:1,attack:0,health:1,rarity:'',timing:'When Deployed',ability:'Give 1 character on your Field the ability to attack this turn, even if it was just played (excluding this card).',img:thumb('1AcPi_Uc6EI2VDavTG863MeC2XX73-jr9'),driveNum:0,fileId:'1AcPi_Uc6EI2VDavTG863MeC2XX73-jr9'},
+  {id:'CD-01',setId:'LT-10',name:'Sirius',type:'Character',group:'Lightning',elements:['Electricity'],value:1,attack:0,health:1,rarity:'',timing:'Any Time',ability:'If this card is in your hand, you may Trash it to block 1 attack damage.',img:thumb('1Z3EgxsMHtHX63F42fY3Lg15k5705n_62'),driveNum:0,fileId:'1Z3EgxsMHtHX63F42fY3Lg15k5705n_62'},
+  {id:'CD-01',setId:'LT-11',name:'Venus',type:'Character',group:'Lightning',elements:['Electricity'],value:2,attack:1,health:1,rarity:'',timing:'During Your Turn',ability:'When this character attacks, your opponent cannot block that attack using Defenders.',img:thumb('1XWLhPpt7bcu6AnHwrN4p-OrDSQNe1WUv'),driveNum:0,fileId:'1XWLhPpt7bcu6AnHwrN4p-OrDSQNe1WUv'},
+  {id:'CD-01',setId:'LT-12',name:'Kepler',type:'Character',group:'Lightning',elements:['Electricity','Earth'],value:2,attack:1,health:1,rarity:'Defender',timing:'When Deployed',ability:'[Defender] Draw 1 card from the top of your deck. Until the start of your next turn, your characters (not this card) cannot be removed from the Field. [Trash from hand: Block 1 attack damage]',img:thumb('1uMaxWUzFWzoE-DBn3-rRYQ-Im3t1JD-m'),driveNum:0,fileId:'1uMaxWUzFWzoE-DBn3-rRYQ-Im3t1JD-m'},
+  {id:'CD-01',setId:'LT-13',name:'Dagon',type:'Character',group:'Lightning',elements:['Electricity','Earth'],value:5,attack:1,health:2,rarity:'',timing:'During Your Turn',ability:'[Rush / On Attack] When this card attacks and removes a character from battle, play 1 character with a value of 3 or less from your Trash. [This card can attack the same turn it is played!]',img:thumb('1jWw-PWCcc9qX5tSD-IwC83WN6CxZujZa'),driveNum:0,fileId:'1jWw-PWCcc9qX5tSD-IwC83WN6CxZujZa'},
+  {id:'CD-01',setId:'LT-14',name:'Europa',type:'Character',group:'Lightning',elements:['Electricity'],value:1,attack:0,health:1,rarity:'Defender',timing:'When Deployed',ability:'[Defender] Prevent 1 character from being removed from the Field until the start of your next turn. [Trash from hand: Block 1 attack damage]',img:thumb('1h3VEPkTd9UWM76g4yoAT9PZUe4c_NKf4'),driveNum:0,fileId:'1h3VEPkTd9UWM76g4yoAT9PZUe4c_NKf4'},
+  {id:'CD-01',setId:'LT-15',name:'Triton',type:'Character',group:'Lightning',elements:['Electricity','Fire'],value:3,attack:1,health:1,rarity:'',timing:'During Your Turn',ability:'[Once Per Turn] When you attack life, recharge 1 character on your Field with a value of 3 or less (excluding Triton).',img:thumb('103oyG4QvCpMvME1W_hKvw2dByGVhQ370'),driveNum:0,fileId:'103oyG4QvCpMvME1W_hKvw2dByGVhQ370'},
 
   // ── ATLANTEAN CHARACTERS — Water (nums 78-91) ──────────────────────────────
   {id:'CD-01',setId:'ST04-02',name:'Gadeirus',type:'Character',group:'Atlantean',elements:['Water'],value:5,attack:2,health:4,rarity:'SR',timing:'When Deployed',ability:'Discharge all characters in the Field with a value of 4 or less until the start of your next turn. Then, Trash 1 discharged character with a value of 4 or less from the Field or Storage Zone.',img:thumb('16vM991NgVsDzjFauDTE5GeSK0bYzoJuh'),driveNum:78,fileId:'16vM991NgVsDzjFauDTE5GeSK0bYzoJuh'},
@@ -556,6 +605,9 @@ const SEED=[
   {id:'CD-01',setId:'ST04-11',name:'Cerdian',type:'Character',group:'Atlantean',elements:['Water'],value:1,attack:1,health:4,rarity:'',timing:'When Deployed',ability:'Add 1 Event from your Storage Zone to your hand!',img:thumb('1OmZslRmACGrDoMgOfucGXSsDmETzcc_j'),driveNum:87,fileId:'1OmZslRmACGrDoMgOfucGXSsDmETzcc_j'},
   {id:'CD-01',setId:'ST04-14',name:'Ondine',type:'Character',group:'Atlantean',elements:['Water'],value:0,attack:1,health:4,rarity:'',timing:'Any Time',ability:'If this card is in your hand, you may store it in the Storage Zone at any time.',img:thumb('1-Q96y_a858Vnzw7aF6nEzeb1z39Nh4tt'),driveNum:90,fileId:'1-Q96y_a858Vnzw7aF6nEzeb1z39Nh4tt'},
   {id:'CD-01',setId:'ST04-15',name:'Cetea',type:'Character',group:'Atlantean',elements:['Water'],value:1,attack:1,health:4,rarity:'',timing:'Any Time',ability:'Trash this card to Trash a discharged character in the Storage Zone.',img:thumb('1ZqXUQfnycptlIJm4AUH-0QRaDs5F6uYZ'),driveNum:91,fileId:'1ZqXUQfnycptlIJm4AUH-0QRaDs5F6uYZ'},
+  {id:'CD-01',setId:'ST04-01',name:'Lady Ariel',type:'Character',group:'Atlantean',elements:['Water','Earth'],value:6,attack:1,health:2,rarity:'SR',timing:'When Deployed',ability:'[SR] Discharge all characters in a player\'s Storage Zone until the start of your next turn. Then play 1 Event card (value 4 or less) from your hand.',img:thumb('1ZHDvCMyJJf_-wiIOz4kL2_TT1cLJg6lJ'),driveNum:0,fileId:'1ZHDvCMyJJf_-wiIOz4kL2_TT1cLJg6lJ'},
+  {id:'CD-01',setId:'ST04-12',name:'Stamar',type:'Character',group:'Atlantean',elements:['Water'],value:4,attack:1,health:2,rarity:'Defender',timing:"Opponent's Turn",ability:"[Defender] When you block, reduce the value of 1 character by 2. Then draw 1 card. [Trash from hand: Block 1 attack damage]",img:thumb('1r55YSQd6rWfvd2yO9dCCQBpJA78MxnpZ'),driveNum:0,fileId:'1r55YSQd6rWfvd2yO9dCCQBpJA78MxnpZ'},
+  {id:'CD-01',setId:'ST04-13',name:'Tula',type:'Character',group:'Atlantean',elements:['Water'],value:1,attack:1,health:1,rarity:'',timing:'Any Time',ability:'[Only Once / Any Time] Discharge your Field Card: Discharge 1 card in a player\'s Storage Zone until the start of your next turn.',img:thumb('1EhBx3C-Ty76D9IES1LfCvXVX0wkAShsC'),driveNum:0,fileId:'1EhBx3C-Ty76D9IES1LfCvXVX0wkAShsC'},
 
   // ── HOLY KNIGHT CHARACTERS — Earth (nums 93-97) ────────────────────────────
   {id:'CD-02',setId:'ST07-01',name:'Carth',type:'Character',group:'Holy Knight',elements:['Earth','Dark'],value:6,attack:2,health:6,rarity:'SR',timing:'Any Time / Only Once',ability:'[Defender SR] Discharge a Field Card you control: Negate the activation of a card and Trash it, excluding the Field Card.',img:thumb('1xJDx9DwqvrBiK4De0GOcGpYzMyPdeA8r'),driveNum:93,fileId:'1xJDx9DwqvrBiK4De0GOcGpYzMyPdeA8r'},
@@ -563,12 +615,33 @@ const SEED=[
   {id:'CD-02',setId:'ST07-03',name:'Aion',type:'Character',group:'Holy Knight',elements:['Earth','Dark'],value:2,attack:1,health:1,rarity:'',timing:'Any Time / Only Once',ability:'Trash a Trigger Card in your Storage Zone: Negate the activation of a character\'s effect.',img:thumb('191fDWJ3p3LbZ5HYKiiphL0aVuVvoXyjI'),driveNum:95,fileId:'191fDWJ3p3LbZ5HYKiiphL0aVuVvoXyjI'},
   {id:'CD-02',setId:'ST07-04',name:'Hermes',type:'Character',group:'Holy Knight',elements:['Earth'],value:1,attack:1,health:4,rarity:'',timing:'When Deployed',ability:'Look at your deck. Add 1 Holy Knight character with a value of 3 or less to your hand, excluding Hermes. Shuffle the deck afterwards.',img:thumb('1OhCwmwTV2CmkElILrRS64tpuGt7xgI91'),driveNum:96,fileId:'1OhCwmwTV2CmkElILrRS64tpuGt7xgI91'},
   {id:'CD-02',setId:'ST07-05',name:'Ares',type:'Character',group:'Holy Knight',elements:['Earth'],value:1,attack:1,health:4,rarity:'',timing:'During Your Turn',ability:'Bottom deck 1 card from your hand. Then, look at the top 5 cards of your deck and add 1 Trigger card to your hand. Place the remaining cards on the bottom of your deck in any order.',img:thumb('1Va5TLFg9XnVMF4tTmsqdP1spqj_4XZYh'),driveNum:97,fileId:'1Va5TLFg9XnVMF4tTmsqdP1spqj_4XZYh'},
+  {id:'CD-02',setId:'ST07-06',name:'Apollo',type:'Character',group:'Holy Knight',elements:['Earth','Fire'],value:4,attack:1,health:1,rarity:'SR',timing:'When Deployed',ability:'[SR] Discard 1 Trigger card from your hand. Then trash up to 2 characters with a value of 3 or less from the Field.',img:thumb('14S0b2at1reiYZpICsUzwHnQbqIRWKJxT'),driveNum:0,fileId:'14S0b2at1reiYZpICsUzwHnQbqIRWKJxT'},
+  {id:'CD-02',setId:'ST07-07',name:'Hestia',type:'Character',group:'Holy Knight',elements:['Earth','Electricity'],value:3,attack:1,health:1,rarity:'',timing:'When Deployed',ability:'[Trigger Card] Draw 1 card. Then trash 1 character with a value of 3 or less from the Field.',img:thumb('1xg0kWIt5iufxOdr9hi2zKIJKfl1WglHz'),driveNum:0,fileId:'1xg0kWIt5iufxOdr9hi2zKIJKfl1WglHz'},
+  {id:'CD-02',setId:'ST07-08',name:'Artemis',type:'Character',group:'Holy Knight',elements:['Earth','Electricity'],value:2,attack:1,health:1,rarity:'Defender',timing:'When Deployed',ability:"[Defender] Add a Trigger Character card from the Trash to your Storage Zone. [Trash from hand: Block 1 attack damage]",img:thumb('1cDyAlMmUVQvy9FvdcIURA1CHZTk_qn2m'),driveNum:0,fileId:'1cDyAlMmUVQvy9FvdcIURA1CHZTk_qn2m'},
+  {id:'CD-02',setId:'ST07-09',name:'Hana',type:'Character',group:'Holy Knight',elements:['Earth'],value:2,attack:0,health:2,rarity:'Defender',timing:"Opponent's Turn",ability:"[Defender / Only Once] Trash 1 Trigger card from Storage Zone: Negate a character's 'when deployed' ability. [Trash from hand: Block 1 attack damage]",img:thumb('1UuKNm0AmhygTOs5x05rqBhRZh2HknqPD'),driveNum:0,fileId:'1UuKNm0AmhygTOs5x05rqBhRZh2HknqPD'},
+  {id:'CD-02',setId:'ST07-10',name:'Hera',type:'Character',group:'Holy Knight',elements:['Earth'],value:1,attack:1,health:1,rarity:'',timing:'Any Time',ability:'[Only Once / Trigger Card] Draw 2 cards. Then trash 1 card from your hand.',img:thumb('1h5-ctofrNrE1WgMUkQOFHkZxV--JIyuz'),driveNum:0,fileId:'1h5-ctofrNrE1WgMUkQOFHkZxV--JIyuz'},
+  {id:'CD-02',setId:'ST07-11',name:'Demeter',type:'Character',group:'Holy Knight',elements:['Earth'],value:1,attack:0,health:1,rarity:'',timing:'Any Time',ability:'[Trigger Card] You may trash this card: Trash 1 character with a value of 2 or less from the Field or Storage Zone.',img:thumb('1iRgVBNCVaa_TDsvSj8cQdc9wYJXCjW6i'),driveNum:0,fileId:'1iRgVBNCVaa_TDsvSj8cQdc9wYJXCjW6i'},
+  {id:'CD-02',setId:'ST07-12',name:'Titus',type:'Character',group:'Holy Knight',elements:['Earth'],value:1,attack:1,health:1,rarity:'',timing:'On Attack',ability:'[Trigger Card] When you attack life, Defenders cannot block!',img:thumb('1gRbjaFqifYTxiXx2dcEjcYpwDYQIJOIN'),driveNum:0,fileId:'1gRbjaFqifYTxiXx2dcEjcYpwDYQIJOIN'},
+  {id:'CD-02',setId:'ST07-13',name:'Atlas (Knight)',type:'Character',group:'Holy Knight',elements:['Earth'],value:2,attack:1,health:1,rarity:'',timing:'Any Time',ability:'[Only Once / Trigger Card] Discard 1 card from your hand. Add 1 Trigger card from your Storage Zone to your hand.',img:thumb('1WgZbhvo8YOW5klvTIhmBBSXn0My47enl'),driveNum:0,fileId:'1WgZbhvo8YOW5klvTIhmBBSXn0My47enl'},
+  {id:'CD-02',setId:'ST07-14',name:'Orion',type:'Character',group:'Holy Knight',elements:['Earth'],value:1,attack:0,health:1,rarity:'',timing:'Any Time',ability:'[Trigger Card] If this card is in your hand, you may store it in the Storage Zone at any time.',img:thumb('1Qz2F2PEHWyNaThTj0gy8-91kzyMrxpoq'),driveNum:0,fileId:'1Qz2F2PEHWyNaThTj0gy8-91kzyMrxpoq'},
+  {id:'CD-02',setId:'ST07-15',name:'Herro',type:'Character',group:'Holy Knight',elements:['Earth'],value:1,attack:1,health:1,rarity:'',timing:'Any Time',ability:'Trash 1 Trigger card from your Storage Zone: Play 1 character with a value of 2 or less from your hand.',img:thumb('1UG7rtPQAmvkjZdp9jVvPHhWuFB0FcY_h'),driveNum:0,fileId:'1UG7rtPQAmvkjZdp9jVvPHhWuFB0FcY_h'},
 
   // ── INFERNO CHARACTERS — Fire (nums 109, 118, 119, 122) ────────────────────
   {id:'CD-01',setId:'ST06-04',name:'Napu',type:'Character',group:'Inferno',elements:['Fire'],value:2,attack:2,health:4,rarity:'',timing:'During Your Turn / Once Per Turn',ability:'When you attack a character, store the top card of your deck. Then, you may return a character from your Storage Zone to your hand.',img:thumb('1sZMmvxgM9l4n71_r0fBBSISIbgCwKfvR'),driveNum:109,fileId:'1sZMmvxgM9l4n71_r0fBBSISIbgCwKfvR'},
   {id:'CD-01',setId:'ST06-13',name:'Komodo',type:'Character',group:'Inferno',elements:['Fire'],value:0,attack:1,health:4,rarity:'',timing:'Any Time',ability:'Bottom deck 1 character with a value of 2 or less from the field. Then, trash this card.',img:thumb('1qxorJk-dRf7W31WZHhGHrsgyy1sSxYXj'),driveNum:118,fileId:'1qxorJk-dRf7W31WZHhGHrsgyy1sSxYXj'},
   {id:'CD-01',setId:'ST06-14',name:'Crow',type:'Character',group:'Inferno',elements:['Fire'],value:2,attack:2,health:4,rarity:'',timing:'When Deployed',ability:'Draw 2 cards from the top of your deck. Then, place 1 card from your hand on the bottom of your deck. Reduce the value of all characters on your opponent\'s Field by 2.',img:thumb('1TtgvFrkyavb4X8vRLNmUPD4Mv4b8v_eP'),driveNum:119,fileId:'1TtgvFrkyavb4X8vRLNmUPD4Mv4b8v_eP'},
   {id:'CD-01',setId:'ST06-02',name:'Leo',type:'Character',group:'Inferno',elements:['Fire','Earth'],value:6,attack:2,health:5,rarity:'SR',timing:'When Deployed',ability:'Play up to 2 characters with a value of 2 or less from the Trash. Characters you control can attack this turn, even if they were just played, except for this card!',img:thumb('1jKP5oAVNaCG3IBQtLtyjlalrFPrYx5Py'),driveNum:122,fileId:'1jKP5oAVNaCG3IBQtLtyjlalrFPrYx5Py'},
+  {id:'CD-01',setId:'ST06-01',name:'Crocodile',type:'Character',group:'Inferno',elements:['Fire','Psychic'],value:6,attack:2,health:1,rarity:'SR',timing:'When Deployed',ability:'[SR] Draw 2 cards. Then gain 3 Elements of any type.',img:thumb('1yNPeYh1Nc2Y5LHSAhUi9_grOGAoMcXLr'),driveNum:0,fileId:'1yNPeYh1Nc2Y5LHSAhUi9_grOGAoMcXLr'},
+  {id:'CD-01',setId:'ST06-03',name:'Flamingo',type:'Character',group:'Inferno',elements:['Fire'],value:2,attack:1,health:1,rarity:'',timing:'When Deployed',ability:"Return 1 Inferno character (other than this) from your Field or Storage to your hand. Then play 1 Inferno character (value 2 or less) from your Storage Zone.",img:thumb('16S0CDV7WZBk-Jvr3ibBM4pcSuFoklOp4'),driveNum:0,fileId:'16S0CDV7WZBk-Jvr3ibBM4pcSuFoklOp4'},
+  {id:'CD-01',setId:'ST06-05',name:'Segal',type:'Character',group:'Inferno',elements:['Fire','Dark'],value:2,attack:1,health:1,rarity:'Defender',timing:'When Deployed',ability:'[Defender] Return 1 character (other than this) from your Field to your hand. Then draw 2 cards. [Trash from hand: Block 1 attack damage]',img:thumb('1pMHqcxhuBc9aQ5iJFI_Wf2RITGwFL6rC'),driveNum:0,fileId:'1pMHqcxhuBc9aQ5iJFI_Wf2RITGwFL6rC'},
+  {id:'CD-01',setId:'ST06-06b',name:'Black Rabbit',type:'Character',group:'Inferno',elements:['Fire'],value:1,attack:0,health:1,rarity:'',timing:'When Deployed',ability:'Store 1 card from the top of your deck. Then recharge a character on your Field with a value of 3 or less.',img:thumb('1ZcS30yfXvMqaiNZcID_pW-X-euI8Vkm2'),driveNum:0,fileId:'1ZcS30yfXvMqaiNZcID_pW-X-euI8Vkm2'},
+  {id:'CD-01',setId:'ST06-07',name:'Black Eagle',type:'Character',group:'Inferno',elements:['Fire'],value:1,attack:1,health:1,rarity:'',timing:'When Deployed',ability:'Trash 1 card from your Storage Zone. Then bottom deck 1 character (value 2 or less) from the Field or Storage Zone.',img:thumb('1IshTMUWeMp6Fn3NojhBtqmNBHB-exj0X'),driveNum:0,fileId:'1IshTMUWeMp6Fn3NojhBtqmNBHB-exj0X'},
+  {id:'CD-01',setId:'ST06-08',name:'Leopard',type:'Character',group:'Inferno',elements:['Fire'],value:1,attack:1,health:1,rarity:'Defender',timing:'When Deployed',ability:"[Defender] 1 of your characters on the Field (other than this) cannot be targeted until the start of your next turn. [Trash from hand: Block 1 attack damage]",img:thumb('1A2o5Im9F0rnkfsjw7cfoIrRAp6kQnVMs'),driveNum:0,fileId:'1A2o5Im9F0rnkfsjw7cfoIrRAp6kQnVMs'},
+  {id:'CD-01',setId:'ST06-10b',name:'Tiger',type:'Character',group:'Inferno',elements:['Fire','Earth'],value:2,attack:1,health:1,rarity:'',timing:'When Deployed',ability:'Store 1 Fire character from your hand. That character can attack the same turn it is played!',img:thumb('1oLaklB6l8mDxMcFLT8Mungnh_bwhG8mY'),driveNum:0,fileId:'1oLaklB6l8mDxMcFLT8Mungnh_bwhG8mY'},
+  {id:'CD-01',setId:'ST06-11',name:'Reptile',type:'Character',group:'Inferno',elements:['Fire'],value:1,attack:0,health:1,rarity:'',timing:'During Your Turn',ability:'[Once Per Turn] Bottom deck 1 card from your hand. Look at top 4; add 1 Inferno Character to hand. Place rest on bottom in any order.',img:thumb('1pYIyvLDdnj_apxA_OKXXcQt8TkG10fyK'),driveNum:0,fileId:'1pYIyvLDdnj_apxA_OKXXcQt8TkG10fyK'},
+  {id:'CD-01',setId:'ST06-09b',name:'Snake',type:'Character',group:'Inferno',elements:['Fire','Earth'],value:3,attack:1,health:1,rarity:'SR',timing:'When Deployed',ability:'[SR] Return 1 Inferno character (value 3 or less, not Snake) from your Field or Storage to hand. Then play 1 Inferno character (value 3 or less) from your hand.',img:thumb('1llgpImAV0lW6OnbhaMdRPvkvTpCBTfzM'),driveNum:0,fileId:'1llgpImAV0lW6OnbhaMdRPvkvTpCBTfzM'},
+  {id:'CD-01',setId:'ST06-12b',name:'Sloth',type:'Character',group:'Inferno',elements:['Fire'],value:3,attack:1,health:1,rarity:'SR',timing:'When Deployed',ability:'[SR] Choose 1 character with a value of 3 or less on the Field or in a Storage Zone and place it on the bottom of its owner\'s deck.',img:thumb('1v_KDNc5VvOfr6_Art6kmTXrmlvWLj_oS'),driveNum:0,fileId:'1v_KDNc5VvOfr6_Art6kmTXrmlvWLj_oS'},
+  {id:'CD-01',setId:'ST06-15',name:'Cobra',type:'Character',group:'Inferno',elements:['Fire'],value:1,attack:0,health:1,rarity:'Defender',timing:'Any Time',ability:'[Defender / Any Time] If this card is in your hand, you may trash it to block 1 attack damage at any time.',img:thumb('1Ksw-8ss_MUI36Lc090Y3xqG6iqQpYwL0'),driveNum:0,fileId:'1Ksw-8ss_MUI36Lc090Y3xqG6iqQpYwL0'},
 
   // ── RAD CHARACTERS — Dark (nums 125, 127, 130, 131, 133) ──────────────────
   {id:'CD-01',setId:'ST06-04b',name:'Boron',type:'Character',group:'RAD',elements:['Dark'],value:2,attack:2,health:4,rarity:'',timing:'When Deployed',ability:'Discard two cards from a Player\'s hand to the Trash, if they have 7 or more cards. If this character gets Discarded from the top Deck, -1 health to a character.',img:thumb('1G1kD-DcRBlDGIud_s1O3so8tIH_7uNky'),driveNum:125,fileId:'1G1kD-DcRBlDGIud_s1O3so8tIH_7uNky'},
@@ -576,6 +649,16 @@ const SEED=[
   {id:'CD-01',setId:'ST06-09',name:'Silver',type:'Character',group:'RAD',elements:['Dark'],value:3,attack:2,health:3,rarity:'SR',timing:'On Removal',ability:'If this character would be removed by battle, your Field Card gains 1 life. If this character is discarded from the top of your deck, reduce a character\'s Health by 1.',img:thumb('1-T-PZ_0UdNnA2N1vgZAd_gtE-usk2maF'),driveNum:130,fileId:'1-T-PZ_0UdNnA2N1vgZAd_gtE-usk2maF'},
   {id:'CD-01',setId:'ST06-10',name:'Xenon',type:'Character',group:'RAD',elements:['Dark'],value:1,attack:1,health:4,rarity:'',timing:'Any Time / Only Once',ability:'Bottom deck up to 4 RAD cards from the Trash in any order, excluding Xenon. If this character is discarded from the top of your deck, reduce a character\'s Health by 1.',img:thumb('1lok8aBzLiYaHeBohJOvmonQg01LeyS4e'),driveNum:131,fileId:'1lok8aBzLiYaHeBohJOvmonQg01LeyS4e'},
   {id:'CD-01',setId:'ST06-12',name:'Nitro',type:'Character',group:'RAD',elements:['Earth','Dark'],value:3,attack:2,health:3,rarity:'Defender',timing:'When Deployed',ability:'[Defender] Discard the top 2 cards from your deck. Then, Characters you control, other than this card, cannot be Removed from the Field until the start of your next turn.',img:thumb('1tIkzV4DsXwvawCdKIR525bLUMud0_bU1'),driveNum:133,fileId:'1tIkzV4DsXwvawCdKIR525bLUMud0_bU1'},
+  {id:'CD-01',setId:'RD-06',name:'Atom',type:'Character',group:'RAD',elements:['Dark'],value:1,attack:1,health:1,rarity:'',timing:'When Deployed',ability:'Trash 2 cards from your hand, then draw 3 cards.',img:thumb('160g8p55z4qLz89nFokI50rrBoSrTZJTR'),driveNum:0,fileId:'160g8p55z4qLz89nFokI50rrBoSrTZJTR'},
+  {id:'CD-01',setId:'RD-07',name:'Sulfur',type:'Character',group:'RAD',elements:['Dark','Earth'],value:3,attack:1,health:1,rarity:'',timing:'When Deployed',ability:'Take control of 1 opponent character with value 3 or less until your next turn, then trash it.',img:thumb('1fNxfwj2GNk4RJtT_CMi1xl58YGDV5x_n'),driveNum:0,fileId:'1fNxfwj2GNk4RJtT_CMi1xl58YGDV5x_n'},
+  {id:'CD-01',setId:'RD-08',name:'Zinc',type:'Character',group:'RAD',elements:['Dark'],value:1,attack:0,health:1,rarity:'Defender',timing:'On Block',ability:'[Defender / On Block] Take control of the attacking character with value 1 or less.',img:thumb('1cqoP2BTkLMSnDk9-uc9Njnf3vXiGMy-J'),driveNum:0,fileId:'1cqoP2BTkLMSnDk9-uc9Njnf3vXiGMy-J'},
+  {id:'CD-01',setId:'RD-09',name:'Argon',type:'Character',group:'RAD',elements:['Dark','Electricity'],value:2,attack:1,health:1,rarity:'',timing:'When Deployed',ability:'Discard 1 card from your hand, then take control of 1 opponent character with value 2 or less.',img:thumb('1Lr13KlZrQMadMkhOrYyVX4Ns5N2oQRVp'),driveNum:0,fileId:'1Lr13KlZrQMadMkhOrYyVX4Ns5N2oQRVp'},
+  {id:'CD-01',setId:'RD-10',name:'Holmium',type:'Character',group:'RAD',elements:['Dark'],value:1,attack:0,health:1,rarity:'',timing:'When Deployed',ability:'Discard the top card of your deck, then place up to 3 RAD characters from your Trash on the bottom of your deck.',img:thumb('19cdORYgmk5YdwjzbHG8L5yGOZA0hAZ0S'),driveNum:0,fileId:'19cdORYgmk5YdwjzbHG8L5yGOZA0hAZ0S'},
+  {id:'CD-01',setId:'RD-11',name:'Fermium',type:'Character',group:'RAD',elements:['Dark'],value:1,attack:0,health:1,rarity:'Defender',timing:'When Deployed',ability:'[Defender] Look at the top 3 cards of your deck. Rearrange them and place any on top or bottom. [Trash from hand: Block 1 attack damage]',img:thumb('1il6qKsmbijnOkI2nAivsHlaMEo6o-X-d'),driveNum:0,fileId:'1il6qKsmbijnOkI2nAivsHlaMEo6o-X-d'},
+  {id:'CD-01',setId:'RD-12',name:'Copper',type:'Character',group:'RAD',elements:['Dark','Psychic'],value:4,attack:2,health:1,rarity:'SR',timing:'When Deployed',ability:'[SR] Return 7 RAD characters from your Trash to the bottom of your deck, then discard the top 3 cards of your deck.',img:thumb('1RtcmU_yOaQaSEVSCXKcV89pj5Mlm78rF'),driveNum:0,fileId:'1RtcmU_yOaQaSEVSCXKcV89pj5Mlm78rF'},
+  {id:'CD-01',setId:'RD-13',name:'Tin',type:'Character',group:'RAD',elements:['Dark','Psychic'],value:4,attack:1,health:1,rarity:'SR',timing:'When Deployed',ability:'[SR] Return 1 RAD character you control to your hand, then play 1 RAD character with cost 4 or less from your Trash.',img:thumb('18KCLp0sypvdeivAOitpNSfVF-vNddTrQ'),driveNum:0,fileId:'18KCLp0sypvdeivAOitpNSfVF-vNddTrQ'},
+  {id:'CD-01',setId:'RD-14',name:'Manganese',type:'Character',group:'RAD',elements:['Dark'],value:5,attack:1,health:2,rarity:'SR',timing:'When Deployed',ability:'[SR] Trash 1 Field character. Your Field Card gains 1 life and your opponent\'s Field Card loses 1 life.',img:thumb('1ZhcZOOe4durwnvXkpXgtTSoa2x91RUNJ'),driveNum:0,fileId:'1ZhcZOOe4durwnvXkpXgtTSoa2x91RUNJ'},
+  {id:'CD-01',setId:'RD-15',name:'Gold',type:'Character',group:'RAD',elements:['Dark','Psychic'],value:6,attack:1,health:2,rarity:'SR',timing:'When Deployed',ability:'[SR] Reduce all opponent Field characters\' value by 2. Play up to 2 RAD characters from your Trash.',img:thumb('1k8Ml2UUJhiCKD86RL1FL_KqIMTrRcjEa'),driveNum:0,fileId:'1k8Ml2UUJhiCKD86RL1FL_KqIMTrRcjEa'},
 ];
 
 // Fill in Drive placeholders
@@ -586,38 +669,98 @@ DRIVE.forEach(dc=>{
   }
 });
 
-let allCards = JSON.parse(localStorage.getItem('cd_v7')||'null') || SEED;
+let allCards = JSON.parse(localStorage.getItem('cd_v10')||'null') || SEED;
+// Remap all card images to the local proxy — fast, no CORS, no rate limits
+allCards = allCards.map(c => ({...c, img: cardImg(c.name)}));
 // deck is now: [{name, count}] - track by name + count
-let deckMap = JSON.parse(localStorage.getItem('cd_deck_v7')||'{}'); // {name: count}
+let deckMap = JSON.parse(localStorage.getItem('cd_deck_v8')||'{}'); // {name: count}
+// field card chosen for this deck (must be picked before adding other cards)
+let deckFieldCard = localStorage.getItem('cd_field_v1') || null;
 let activeF = 'All', searchT = '', activeCost = 'all';
 
-// ── DERIVED DECK ELEMENT LOCK ──
+// ── FIELD CARD LOCK ──
+// The deck element is determined by the chosen field card, not by the cards in the deck.
 function getDeckLockedElement() {
-  const entries = Object.entries(deckMap).filter(([,c])=>c>0);
-  if(!entries.length) return null;
-  // find the primary element used in deck
-  const elCount = {};
-  entries.forEach(([name])=>{
-    const card = allCards.find(c=>c.name===name);
-    if(card) (card.elements||[]).forEach(e=>{ elCount[e]=(elCount[e]||0)+1; });
-  });
-  const sorted = Object.entries(elCount).sort((a,b)=>b[1]-a[1]);
-  return sorted[0]?.[0] || null;
+  if(!deckFieldCard) return null;
+  const fc = allCards.find(c=>c.name===deckFieldCard && c.type==='Field');
+  return fc ? (fc.elements||[])[0] || null : null;
+}
+
+// A card is "universal" if it has all 6 elements (Any element events/triggers)
+function isUniversalCard(card){
+  const ALL_EL = ['Fire','Water','Electricity','Earth','Dark','Psychic'];
+  return ALL_EL.every(e=>(card.elements||[]).includes(e));
 }
 
 function deckCount(){ return Object.values(deckMap).reduce((a,b)=>a+b,0); }
 function cardCopyCount(name){ return deckMap[name]||0; }
 
 function canAddCard(card) {
+  // Field cards are never added to the 40-card pool
+  if(card.type === 'Field') return {ok:false, reason:'Field cards are chosen separately — not added to the deck'};
+  // Must pick a field card first
+  if(!deckFieldCard) return {ok:false, reason:'Choose a Field Card first to unlock deck building'};
   if(deckCount() >= 40) return {ok:false, reason:'Deck is full (40 max)'};
   const copies = cardCopyCount(card.name);
   if(copies >= MAX_COPIES) return {ok:false, reason:`Max ${MAX_COPIES} copies per card`};
-  // Check element lock
+  // Universal cards (Any element) are always allowed
+  if(isUniversalCard(card)) return {ok:true};
+  // Cards with no element restriction are allowed
+  if(!card.elements || card.elements.length === 0) return {ok:true};
+  // Card must share at least one element with the deck's locked element
   const locked = getDeckLockedElement();
-  if(locked && card.elements.length && !card.elements.includes(locked)) {
-    return {ok:false, reason:`Deck is locked to ${locked}`};
+  if(locked && !card.elements.includes(locked)) {
+    return {ok:false, reason:`${card.elements[0]} card doesn't match your ${locked} deck`};
   }
   return {ok:true};
+}
+
+// ── FIELD CARD PICKER ──
+function renderFieldCardPicker(){
+  const fieldCards = allCards.filter(c=>c.type==='Field');
+  const grid = document.getElementById('fc-picker-grid');
+  if(!grid) return;
+  if(!fieldCards.length){
+    grid.innerHTML='<div class="fc-none-hint">No field cards found in library.</div>';
+    return;
+  }
+  grid.innerHTML = fieldCards.map(fc=>{
+    const el = (fc.elements||[])[0]||'';
+    const selected = deckFieldCard === fc.name;
+    return `<div class="fc-tile${selected?' fc-selected el-'+el:''}" onclick="pickFieldCard('${fc.name.replace(/'/g,"\\'")}')">
+      ${fc.img ? `<img src="${fc.img}" alt="${fc.name}" onerror="this.style.display='none'">` : `<div style="height:78px;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:1.2rem">${EL[el]||'🏰'}</div>`}
+      <div class="fc-label">${fc.name}</div>
+    </div>`;
+  }).join('');
+}
+
+function pickFieldCard(name){
+  if(deckFieldCard === name){
+    // clicking selected one deselects (if deck is empty)
+    if(deckCount()===0){
+      deckFieldCard = null;
+      localStorage.removeItem('cd_field_v1');
+      showToast('Field card cleared.');
+    } else {
+      showToast('Remove all deck cards first to change the Field Card.');
+      return;
+    }
+  } else {
+    if(deckCount()>0){
+      if(!confirm(`Changing your Field Card will clear your current deck (${deckCount()} cards). Continue?`)) return;
+      deckMap={};
+      localStorage.setItem('cd_deck_v8', JSON.stringify(deckMap));
+    }
+    deckFieldCard = name;
+    localStorage.setItem('cd_field_v1', name);
+    const fc = allCards.find(c=>c.name===name);
+    const el = fc?(fc.elements||[])[0]:'';
+    showToast(`${EL[el]||'🏰'} ${name} selected — now build your ${el} deck!`);
+  }
+  renderFieldCardPicker();
+  renderGrid();
+  renderDeckPanel();
+  updateCounter();
 }
 
 // ── SORT ──
@@ -674,7 +817,10 @@ function renderGrid(){
   g.innerHTML = f.map(c=>{
     const copies = cardCopyCount(c.name);
     const canAdd = canAddCard(c);
-    const isLocked = lockedEl && c.elements.length && !c.elements.includes(lockedEl);
+    // Field cards are never shown as locked (they are the chooseable ones)
+    // Universal cards (all 6 elements) are never locked
+    // Otherwise lock if deck has an element and card doesn't match
+    const isLocked = c.type !== 'Field' && lockedEl && c.elements.length > 0 && !isUniversalCard(c) && !c.elements.includes(lockedEl);
     const imgH = c.img
       ? `<img src="${c.img}" alt="${c.name}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'card-img-ph\\'>${EL[(c.elements||[])[0]]||'🃏'}</div>'">`
       : `<div class="card-img-ph">${EL[(c.elements||[])[0]]||'🃏'}</div>`;
@@ -722,7 +868,7 @@ function updateCounter(){
   // Update element lock badge
   const locked = getDeckLockedElement();
   const badge = document.getElementById('el-lock-display');
-  if(locked && total>0){
+  if(locked){
     badge.innerHTML=`<span class="el-lock-badge locked-${locked}">${EL[locked]||''} ${locked} Deck</span>`;
   } else {
     badge.innerHTML='';
@@ -732,9 +878,27 @@ function updateCounter(){
 // ── DECK PANEL ──
 function renderDeckPanel(){
   const entries = Object.entries(deckMap).filter(([,c])=>c>0);
+
+  // Field card row (always shown at top if chosen)
+  const fcHtml = (containerId) => {
+    if(!deckFieldCard) return `<div class="deck-empty" style="font-size:.72rem">Pick a Field Card above to start</div>`;
+    const fc = allCards.find(c=>c.name===deckFieldCard);
+    const el = fc?(fc.elements||[])[0]:'';
+    return `<div class="deck-fc-row">
+      ${fc&&fc.img?`<img src="${fc.img}" alt="${fc.name}" onerror="this.style.display='none'">`:`<div style="width:36px;height:50px;background:var(--surface3);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:1rem">${EL[el]||'🏰'}</div>`}
+      <div class="deck-fc-info">
+        <div class="deck-fc-name">🏰 ${fc?fc.name:deckFieldCard}</div>
+        <div class="deck-fc-el">${EL[el]||''} ${el} Field Card</div>
+      </div>
+    </div>`;
+  };
+  ['deck-list-content','deck-tab-content'].forEach(id=>{
+    const el2 = document.getElementById(id);
+    if(el2 && !entries.length){
+      el2.innerHTML = fcHtml(id) + (deckFieldCard?'<div class="deck-empty">Add cards to build your deck</div>':'');
+    }
+  });
   if(!entries.length){
-    document.getElementById('deck-list-content').innerHTML='<div class="deck-empty">Add cards to build your deck</div>';
-    document.getElementById('deck-tab-content').innerHTML='<div class="deck-empty">No cards added yet</div>';
     document.getElementById('deck-stats').style.display='none';
     document.getElementById('deck-stats2').style.display='none';
     return;
@@ -761,8 +925,9 @@ function renderDeckPanel(){
         </div>`).join('')}
     </div>`).join('');
 
-  document.getElementById('deck-list-content').innerHTML = makeList();
-  document.getElementById('deck-tab-content').innerHTML = makeList();
+  // Prepend field card row above the card list
+  document.getElementById('deck-list-content').innerHTML = fcHtml('deck-list-content') + makeList();
+  document.getElementById('deck-tab-content').innerHTML = fcHtml('deck-tab-content') + makeList();
 
   // Stats
   const allDeckCards = entries.flatMap(([name,count])=>Array(count).fill(allCards.find(c=>c.name===name)||{}));
@@ -792,8 +957,10 @@ function renderDeckPanel(){
 }
 
 function save(){
-  localStorage.setItem('cd_v7', JSON.stringify(allCards));
-  localStorage.setItem('cd_deck_v7', JSON.stringify(deckMap));
+  localStorage.setItem('cd_v10', JSON.stringify(allCards));
+  localStorage.setItem('cd_deck_v8', JSON.stringify(deckMap));
+  if(deckFieldCard) localStorage.setItem('cd_field_v1', deckFieldCard);
+  else localStorage.removeItem('cd_field_v1');
 }
 function exportDeck(){
   const entries=Object.entries(deckMap).filter(([,c])=>c>0);
@@ -805,8 +972,14 @@ function exportDeck(){
   const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='clash-dynasty-deck.json';a.click();
 }
 function clearDeck(){
-  if(!confirm('Clear your entire deck?'))return;
-  deckMap={};save();renderGrid();renderDeckPanel();updateCounter();
+  if(!confirm('Clear your entire deck and Field Card?'))return;
+  deckMap={};
+  deckFieldCard=null;
+  save();
+  renderFieldCardPicker();
+  renderGrid();
+  renderDeckPanel();
+  updateCounter();
 }
 
 // ── VALIDATE ──
@@ -892,13 +1065,14 @@ function putSavedDecks(arr){ localStorage.setItem(SAVED_DECKS_KEY, JSON.stringif
 function saveCurrentDeck(){
   const total = Object.values(deckMap).reduce((a,b)=>a+b,0);
   const msg = document.getElementById('deck-save-msg');
+  if(!deckFieldCard){ msg.style.color='#e87a5a'; msg.textContent='❌ Choose a Field Card first before saving.'; return; }
   if(total < 40){ msg.style.color='#e87a5a'; msg.textContent=`❌ Your deck has ${total}/40 cards. Add ${40-total} more before saving.`; return; }
   if(total > 40){ msg.style.color='#e87a5a'; msg.textContent=`❌ Your deck has ${total} cards — max is 40. Remove ${total-40}.`; return; }
   const name = document.getElementById('deck-save-name').value.trim();
   if(!name){ msg.style.color='#e87a5a'; msg.textContent='❌ Please enter a deck name.'; return; }
   const decks = getSavedDecks();
   const existing = decks.findIndex(d=>d.name===name);
-  const entry = { name, deckMap:{...deckMap}, savedAt: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) };
+  const entry = { name, deckMap:{...deckMap}, fieldCard: deckFieldCard||null, savedAt: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) };
   if(existing>-1){ if(!confirm(`A deck named "${name}" already exists. Overwrite it?`)) return; decks[existing]=entry; }
   else { decks.unshift(entry); }
   putSavedDecks(decks);
@@ -913,9 +1087,12 @@ function loadSavedDeck(name){
   const d = decks.find(x=>x.name===name); if(!d) return;
   if(!confirm(`Load deck "${name}"? This will replace your current deck.`)) return;
   deckMap = {...d.deckMap};
+  deckFieldCard = d.fieldCard || null;
   save();
-  updateDeckCount();
+  renderFieldCardPicker();
+  updateCounter();
   renderGrid();
+  renderDeckPanel();
   renderSavedDecks();
   showToast(`Deck "${name}" loaded!`);
 }
@@ -958,11 +1135,14 @@ function renderSavedDecks(){
       const card = allCards.find(c=>c.name===name);
       return card&&card.img ? `<img src="${card.img}" style="width:36px;height:50px;object-fit:cover;border-radius:4px;border:1px solid var(--border2)" title="${name}">` : '';
     }).join('');
+    // Field card badge
+    const fcEl = d.fieldCard ? (()=>{ const fc=allCards.find(c=>c.name===d.fieldCard); return fc?(fc.elements||[])[0]:''; })() : '';
+    const fcBadge = d.fieldCard ? `<span class="el-lock-badge locked-${fcEl}" style="font-size:.52rem">${EL[fcEl]||'🏰'} ${fcEl}</span>` : '';
     return `<div style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:.85rem;margin-bottom:.7rem;display:flex;align-items:center;gap:.9rem">
       <div style="display:flex;gap:3px;flex-shrink:0">${preview}</div>
       <div style="flex:1;min-width:0">
-        <div style="font-family:'Cinzel',serif;font-size:.82rem;color:var(--gold-light);margin-bottom:.18rem">${d.name}</div>
-        <div style="font-size:.65rem;color:var(--text3)">${total} cards · Saved ${d.savedAt}</div>
+        <div style="font-family:'Cinzel',serif;font-size:.82rem;color:var(--gold-light);margin-bottom:.18rem">${d.name} ${fcBadge}</div>
+        <div style="font-size:.65rem;color:var(--text3)">${total} cards · ${d.fieldCard||'No field card'} · Saved ${d.savedAt}</div>
       </div>
       <div style="display:flex;gap:.4rem;flex-shrink:0">
         <button onclick="loadSavedDeck('${d.name.replace(/'/g,"\\'")}');" style="background:var(--surface3);border:1px solid var(--border2);color:var(--text2);font-family:'Cinzel',serif;font-size:.62rem;padding:.38rem .65rem;border-radius:6px;cursor:pointer">▶ Load</button>
@@ -1052,7 +1232,7 @@ document.querySelectorAll('.f-btn').forEach(b=>{b.addEventListener('click',()=>{
 document.querySelectorAll('.cf-btn').forEach(b=>{b.addEventListener('click',()=>{document.querySelectorAll('.cf-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');activeCost=b.dataset.cost;renderGrid();});});
 
 // ── INIT ──
-renderGrid();updateCounter();setTimeout(adjustSpacer,100);
+renderFieldCardPicker();renderGrid();renderDeckPanel();updateCounter();setTimeout(adjustSpacer,100);
 </script>
 </body>
 </html>

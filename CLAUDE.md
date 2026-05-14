@@ -36,7 +36,7 @@ URL: `http://localhost:8080`
 
 ### Starting Hand
 - Player 1 (goes first): draw 5 cards, start with 1 element
-- Player 2 (goes second): draw 6 cards, start with 1 element
+- Player 2 (goes second): draw 5 cards, start with 1 element
 
 ### Element System (IMPORTANT — dict-based, not a single int)
 - Each player has `elements: {Water:0, Fire:0, Earth:0, Electricity:0, Psychic:0, Dark:0}`
@@ -195,19 +195,178 @@ const EL_IMG = { Water: thumb('...'), Fire: thumb('...'), ... }
 
 ---
 
+## Card Database Tables
+
+### Field Cards
+| ID | Name | Element | Lives | Field Ability |
+|---|---|---|---|---|
+| fl01 | The Cove | Water | 5 | Spend 2: Draw 1 card |
+| fl02 | The Ruins | Earth | 5 | Spend 2: Deal 1 damage to a character |
+| fl03 | The Throne Room | Earth | 5 | Spend 2: Return 1 Trigger char from Trash to hand |
+| fl04 | The Cemetery | Dark | 3 | Trash top 2; reduce a char's value by -1 until EOT |
+| fl05 | Sky Light City | Electricity | 5 | Spend 2: All your chars +1 ATK until EOT |
+| fl06 | City of Rapture | Water | 5 | Spend 2: Draw 2, place 1 from hand on bottom of deck |
+| fl07 | The Fire Temple | Fire | 5 | Spend 2: 1 char +2 ATK until EOT |
+
+---
+
+### Event Cards
+| ID | Name | Cost | Element | Effect Summary |
+|---|---|---|---|---|
+| ev01 | Clash | 0 | Any | 1 char +1 ATK (if ATK ≤1); draw 1 |
+| ev02 | Cloud Rose | 2 | Any | Draw 1, bottom 1 from hand, deal 1 damage to a char |
+| ev03 | Reinforcements | 1 | Any | 1 char +1 ATK until EOT; look top 5, add 1, rearrange |
+| ev04 | Super-Charge | 1 | Any | Re-charge 1 char or Field Card again this turn |
+| ev05 | Circuit Battery | 5 | Electricity | Recharge or reset all cards on your Field |
+| ev06 | Malfunction | 0 | Any | Drop top 1 of deck; deal 2 damage to char on Field or Storage |
+| ev07 | Telekinesis | 0 | Psychic | Deal 2 damage to all characters on the Field |
+| ev08 | Assassin's Mark | 0 | Dark | Target 1 char — it cannot attack this turn |
+
+---
+
+### Trigger Cards
+| ID | Name | Cost | Element | Timing | Effect Summary |
+|---|---|---|---|---|---|
+| tr01 | Cold Fusion | 0 | Any | Any Time | Negate the activation of 1 card effect |
+| tr02 | Barrier | 0 | Any | Any Time | Prevent 1 attack; your 1 char -1 ATK |
+| tr03 | Medic Aid | 0 | Earth | Any Time | Restore 1 HP to a character |
+| tr04 | Weather Change | 0 | Any | Any Time | Change active field element until EOT |
+| tr05 | Resurrection | 0 | Psychic | Any Time | Return 1 char from Trash to hand |
+| tr06 | United | 0 | Any | Any Time | All your chars +1 ATK until EOT |
+| tr07 | Rage | 0 | Any | Any Time | If a player has 7+ cards in hand, discard 1 |
+| tr08 | Storage Space | 0 | Earth | Any Time | Store up to 2 cards from hand |
+
+---
+
+### Psychic Characters — The Sinners (Element: Psychic)
+| ID | Name | Cost | ATK | HP | Rarity | Keywords | Effect Summary |
+|---|---|---|---|---|---|---|---|
+| ps01 | Wrath | 3 | 2 | 3 | SR | — | +2 ATK for each Psychic in your Storage Zone |
+| ps02 | Greed | 3 | 1 | 3 | SR | — | Draw 2; opponent discards 1 |
+| ps03 | Gluttony | 3 | 2 | 3 | SR | — | Look at opponent's hand; discard up to 2 |
+| ps04 | Spite | 1 | 0 | 1 | — | — | Look top 5; add 1 Psychic (cost ≤3) to hand |
+| ps05 | Fury | 2 | 1 | 2 | — | — | Deal 1 damage to a Field char |
+| ps06 | Taboo | 1 | 0 | 1 | — | Defender | Trash from hand: block 1 attack damage |
+| ps07 | Pride | 2 | 1 | 2 | — | — | All your Psychic chars +1 ATK until EOT |
+| ps08 | Malevolent | 2 | 1 | 2 | — | Only Once | Negate 1 character effect activation |
+| ps09 | Savage | 1 | 1 | 1 | — | — | Can attack the turn it is deployed |
+| ps10 | Victorious | 2 | 1 | 2 | — | — | Draw 1 card per opponent char on Field |
+| ps11 | Rage | 2 | 2 | 2 | — | — | Destroy 1 card in Storage Zone |
+| ps12 | Malice | 2 | 1 | 2 | — | — | Deal 1 damage to all Field characters |
+
+---
+
+### Mercenary Characters (Mixed Elements)
+| ID | Name | Cost | Cost Elements | ATK | HP | Rarity | Keywords | Effect Summary |
+|---|---|---|---|---|---|---|---|---|
+| mc01 | Cain | 6 | Dark ×6 | 2 | 2 | SR | — | Discharge FC; remove chars ATK ≤1 from Storage; draw 2 |
+| mc02 | Noah | 5 | Earth×4 + Elec×1 | 1 | 2 | SR | — | Return up to 2 Mercenary chars from Trash to hand |
+| mc03 | Mary | 1 | Dark ×1 | 0 | 1 | — | — | Add 1 Mercenary (cost ≤2) from deck to hand |
+| mc04 | Abel | 3 | Earth×2 + Elec×1 | 0 | 2 | — | — | Move 1 Mercenary (cost ≤2) from deck or Storage to hand |
+| mc05 | Aaron | 2 | Earth×1 + Elec×1 | 0 | 1 | — | — | Look top 3; add 1 Mercenary to hand |
+| mc06 | Azrael | 4 | Dark ×4 | 2 | 3 | SR | — | Destroy 1 character on the Field |
+| mc07 | Gabriel | 1 | Earth ×1 | 0 | 2 | — | — | Store 1 Mercenary from hand in Storage Zone |
+| mc08 | Ariel | 1 | Earth ×1 | 0 | 1 | — | — | Look top 4; store 1 Mercenary (not Ariel); rest on bottom |
+| mc09 | Raziel | 1 | Dark ×1 | 0 | 2 | — | Defender | Trash from hand: block 1 damage; then +1 ATK to a char |
+| mc10 | Engel | 1 | Earth ×1 | 0 | 1 | — | — | Draw 1 card |
+| mc11 | Raphael | 1 | Earth ×1 | 0 | 2 | — | — | Return 1 Mercenary from Trash to Storage Zone |
+
+---
+
+### Lightning Characters (Element: Electricity)
+| ID | Name | Cost | Cost Elements | ATK | HP | Rarity | Keywords | Effect Summary |
+|---|---|---|---|---|---|---|---|---|
+| lt01 | Saturn | 2 | Elec ×2 | 1 | 2 | — | — | Give 1 char +1 ATK this turn |
+| lt02 | Titan | 3 | Elec ×3 | 2 | 2 | — | — | All your chars +1 ATK until EOT |
+| lt03 | Jupiter | 2 | Elec ×2 | 1 | 1 | — | — | — |
+| lt04 | Luna | 2 | Elec ×2 | 1 | 1 | — | — | — |
+| lt05 | Mars | 4 | Elec ×4 | 1 | 1 | SR | — | — |
+| lt06 | Mercury | 2 | Elec×1 + Earth×1 | 1 | 1 | — | Rush | Can attack turn deployed |
+| lt07 | Neptune | 1 | Elec ×1 | 0 | 1 | — | — | — |
+| lt08 | Pegasi | 6 | Elec×4 + Earth×2 | 2 | 1 | SR | — | — |
+| lt09 | Polaris | 1 | Elec ×1 | 0 | 1 | — | — | — |
+| lt10 | Sirius | 1 | Elec ×1 | 0 | 1 | — | — | — |
+| lt11 | Venus | 2 | Elec ×2 | 1 | 1 | — | — | — |
+| lt12 | Kepler | 2 | Elec×1 + Earth×1 | 1 | 1 | — | Defender | Blocks attacks |
+| lt13 | Dagon | 5 | Elec×4 + Earth×1 | 1 | 2 | — | Rush | Can attack turn deployed |
+| lt14 | Europa | 1 | Elec ×1 | 0 | 1 | — | Defender | Blocks attacks |
+| lt15 | Triton | 3 | Elec×2 + Fire×1 | 1 | 1 | — | — | — |
+
+---
+
+### Atlantean Characters (Element: Water)
+| ID | Name | Cost | Cost Elements | ATK | HP | Rarity | Keywords | Effect Summary |
+|---|---|---|---|---|---|---|---|---|
+| at01 | Gadeirus | 5 | Water ×5 | 2 | 2 | SR | — | Discharge all chars (value ≤4); trash 1 discharged char (≤4) |
+| at02 | Smoker | 1 | Water ×1 | 1 | 1 | — | — | Trash 1 from hand; look top 5, add 1 Atlantean to hand |
+| at03 | Atlas | 2 | Water ×2 | 2 | 1 | — | — | Trash 1 discharged char (value ≤2) from Field or Storage |
+| at04 | Ampheres | 3 | Water ×3 | 2 | 1 | SR | Only Once | Discharge char ≤2; trash 1 discharged char ≤3 |
+| at05 | Diaprepes | 2 | Water ×2 | 1 | 1 | — | Only Once | Discharge your FC: play 1 Event (cost ≤3) from hand |
+| at06 | Azaes | 2 | Water ×2 | 1 | 1 | — | Only Once | Discharge 1 char until your next turn |
+| at07 | Mestor | 2 | Water ×2 | 1 | 1 | — | Defender | All opponent chars -1 value; draw 1 |
+| at08 | Makaira | 1 | Water ×1 | 0 | 1 | — | — | Draw 2; trash 1 from hand |
+| at09 | Topo | 2 | Water×1 + Earth×1 | 1 | 1 | — | Defender | On block: discharge 1 char (value ≤3) until EOT |
+| at10 | Cerdian | 1 | Water ×1 | 0 | 1 | — | — | Add 1 Event from Storage Zone to hand |
+| at11 | Ondine | 0 | — | 0 | 1 | — | — | May store this card from hand at any time |
+| at12 | Cetea | 1 | Water ×1 | 1 | 1 | — | — | Trash this: trash 1 discharged char in Storage Zone |
+
+---
+
+### Holy Knight Characters (Element: Earth)
+| ID | Name | Cost | ATK | HP | Rarity | Keywords | Effect Summary |
+|---|---|---|---|---|---|---|---|
+| hk01 | Carth | 6 | 2 | 2 | SR | Defender, Only Once | Discharge your FC: negate 1 card effect and trash it |
+| hk02 | Heracles | 6 | 1 | 2 | SR | Only Once | Play 1 Trigger from Trash; give 1 other char +1 HP |
+| hk03 | Aion | 2 | 1 | 1 | — | Only Once | Trash Trigger in Storage: negate 1 char effect |
+| hk04 | Hermes | 1 | 0 | 1 | — | — | Look full deck; add 1 Holy Knight (cost ≤3, not Hermes) |
+| hk05 | Ares | 1 | 0 | 1 | — | — | Bottom 1 from hand; look top 5, add 1 Trigger to hand |
+
+---
+
+### Inferno Characters (Element: Fire)
+| ID | Name | Cost | ATK | HP | Rarity | Keywords | Effect Summary |
+|---|---|---|---|---|---|---|---|
+| if01 | Napu | 2 | 1 | 1 | — | — | On attack: store top of deck; may return 1 from Storage to hand |
+| if02 | Komodo | 0 | 0 | 1 | — | — | Bottom deck 1 char (value ≤2) from Field; trash this |
+| if03 | Crow | 2 | 1 | 1 | — | — | Draw 2, place 1 on bottom; opponent's Field chars -2 value |
+| if04 | Leo | 6 | 1 | 2 | SR | — | Play up to 2 chars (≤2) from Trash; your other chars can attack this turn |
+
+---
+
+### RAD Characters (Element: Dark)
+| ID | Name | Cost | Cost Elements | ATK | HP | Rarity | Keywords | Effect Summary |
+|---|---|---|---|---|---|---|---|---|
+| rd01 | Boron | 2 | Dark ×2 | 1 | 1 | — | — | If opponent has 7+ cards, they discard 2 |
+| rd02 | Neon | 1 | Dark ×1 | 0 | 1 | — | — | Look bottom 3; store 1 RAD (≤3); rearrange rest on top |
+| rd03 | Silver | 3 | Dark ×3 | 1 | 1 | SR | — | On Removal by battle: your FC +1 life |
+| rd04 | Xenon | 1 | Dark ×1 | 1 | 1 | — | Only Once | Bottom deck up to 4 RAD from Trash (not Xenon) |
+| rd05 | Nitro | 3 | Dark ×3 | 1 | 2 | — | Defender | Discard top 2; your other chars can't be removed until your next turn |
+| rd06 | Atom | 1 | Dark ×1 | 1 | 1 | — | — | Trash 2 from hand; draw 3 |
+| rd07 | Sulfur | 3 | Earth×1 + Dark×2 | 1 | 1 | — | — | Take control of 1 opponent char (value ≤3) until next turn, then trash it |
+| rd08 | Zinc | 1 | Dark ×1 | 0 | 1 | — | Defender | On block: take control of attacking char (value ≤1) |
+| rd09 | Argon | 2 | Elec×1 + Dark×1 | 1 | 1 | — | — | Discard 1 from hand; take control of 1 opponent char (value ≤2) |
+| rd10 | Holmium | 1 | Dark ×1 | 0 | 1 | — | — | Discard top of deck; place up to 3 RAD from Trash on bottom of deck |
+| rd11 | Fermium | 1 | Dark ×1 | 0 | 1 | — | Defender | Look top 3; rearrange and place any on top or bottom |
+| rd12 | Copper | 4 | Psychic×1 + Dark×3 | 2 | 1 | SR | — | Return 7 RAD from Trash to bottom of deck; discard top 3 |
+| rd13 | Tin | 4 | Psychic×1 + Dark×3 | 1 | 1 | SR | — | Return 1 RAD you control to hand; play 1 RAD (cost ≤4) from Trash |
+| rd14 | Manganese | 5 | Dark ×5 | 1 | 2 | SR | — | Trash 1 Field char; your FC +1 life, opponent's FC -1 life |
+| rd15 | Gold | 6 | Psychic×2 + Dark×4 | 1 | 2 | SR | — | All opponent Field chars -2 value; play up to 2 RAD from Trash |
+
+---
+
 ## Card Database Notes
 
 ### Factions / Subtypes
 - **Atlantean** (Water element) — at01–at12
 - **Inferno** (Fire element) — if01–if04
 - **Holy Knights** (Earth element) — hk01–hk05
-- **Lightning** (Electricity element) — lt01–lt02
+- **Lightning** (Electricity element) — lt01–lt15
 - **Psychic / The Sinners** (Psychic element) — ps01–ps12
 - **Mercenary** (mixed elements) — mc01–mc11
-- **RAD** (Dark element) — rd01–rd05
+- **RAD** (Dark element) — rd01–rd15
 
 ### Field Cards
-- fl01 = The Cove (Water/Psychic starting field)
+- fl01 = The Cove (Psychic starting field)
 - fl02 = The Ruins (Earth)
 - fl03 = The Throne Room (Earth starting field)
 - fl04 = The Cemetery (Dark starting field, 3 lives)

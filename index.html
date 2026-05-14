@@ -455,6 +455,7 @@ input, select { font-family: inherit; }
   <button class="mbtn primary" onclick="showLobby('create')">⚔️  Create Game</button>
   <button class="mbtn secondary" onclick="showLobby('join')">🔗  Join Game</button>
   <button class="mbtn secondary" onclick="showLobby('solo')" style="background:linear-gradient(135deg,#1a5a1a,#0a3a0a);border-color:#3a9a3a">🤖  Solo Practice</button>
+  <button class="mbtn ghost" onclick="window.open('/deck-builder.html','_blank')" style="background:linear-gradient(135deg,#3a2a00,#1a1400);border-color:var(--gold);color:var(--gold)">🃏  Deck Builder</button>
   <button class="mbtn ghost" onclick="go('rules')">📖  Rules</button>
 </div>
 
@@ -657,120 +658,11 @@ input, select { font-family: inherit; }
 
 <script>
 // ════════════════════════════════════════════
-//  CARD IMAGE LOOKUP — Google Drive thumbnails
-//  Maps card name → Drive thumbnail URL
+//  CARD IMAGE LOOKUP — via local proxy server
+//  Server fetches from Google Drive and caches locally.
+//  Edit fileId in cards.json — no frontend change needed.
 // ════════════════════════════════════════════
-function thumb(id){ return `https://drive.google.com/uc?id=${id}&export=view`; }
-
-const CARD_IMGS = {
-  // ── FIELD CARDS ──
-  'Sky Light City':        thumb('1AWP_r7ZK0RPgHrhfwEKlXndN76aZTAua'),
-  'The City of Rapture':   thumb('1hvE_1AffzOYii-OwtwH2M0M0PHJfu9ia'),
-  'The Fire Temple':       thumb('1vKtwGmI7-M6y9P0kA_tfCEs5LKDUmLD4'),
-  'The Cove':              thumb('1YzUAy9MlSOovrVbgO46sy6nBYBM1hz00'),
-  'The Ruins':             thumb('1CQv2gCHqK_RuY7UFfjjxmEr2_hTXrSbz'),
-  'The Throne Room':       thumb('1NwEcLG78_bNf7MnkD5l2qJT9DODV1ld0'),
-  'The Cementary':         thumb('1cWtev3HbfdB4LF4Aag0xAOBq6YF4Oq10'),
-  // ── EVENTS ──
-  'Clash':                 thumb('1qvdi8RgGi8mYlEul7GdzadHBMgZVxNwu'),
-  'Cloud Rose':            thumb('17dUQ3O3ajsLIB4cmj4k33Js-GnRAx7Kp'),
-  'Reinforcements':        thumb('18fuS7DitRl8KUR7e9CUt-VnF7Rt0vZeg'),
-  'Super-Charge':          thumb('1YWOaIZmp9PBHstQkz648zv-eXI30K1jv'),
-  'Circuit Battery':       thumb('1gPjCcUwsafIR7iLzrrj4lamqe2Sc6qll'),
-  'Malfunction':           thumb('1RdFfwc0SWMpkQmF6BffRvvRR_qjyG571'),
-  'Telekinesis':           thumb('1loTpTE9b-xlZX1mFd2OhjOyUeMyaqnIn'),
-  "Assassin's Mark":       thumb('1wukeurh2QrWrTEsPWE2NDim8rkFE7xw6'),
-  // ── TRIGGERS ──
-  'Cold Fusion':           thumb('1C-dJjr_hy4qPnrIrNDQLk14JPu34EErP'),
-  'Barrier':               thumb('1TKNFFXHqT_Hz5s1aIhbSdEdQyoAIfguy'),
-  'Medic Aid':             thumb('1VcLklWXZ0d1RCC_u8ZssvwS8RyOWdmOr'),
-  'Weather Change':        thumb('1c9K_ZzlEV9p3tc-jiBuWMuSY7BCBd6PA'),
-  'Resurrection':          thumb('12p_gX6nxIudwbv5OxzYOp_nN1my6_wYR'),
-  'United':                thumb('1mokUjWX4ykznRzKms647fN27UZ_ooWIw'),
-  'Rage':                  thumb('1gaFpCjMrMqnVb9bsZL1a4EEKxXUB5z_l'),
-  'Storage Space':         thumb('1uRzBhDJEgBXzDeGGTPFsaIZtyqllpImY'),
-  // ── PSYCHIC / SINNERS ──
-  'Desire':                thumb('1SCtyWbUWWfFwVqO1WlsIKS1rYnFY39QO'),
-  'Malign':                thumb('1aaBoNEAIN7m43PJHHyxd7jXeSRt66FVV'),
-  'Lust':                  thumb('1UXfJbP6nj4oOMto6NxsOdf1gTny0v4Nj'),
-  'Envy':                  thumb('1GCgLqdu1dk8nXxOArX7l563icMmEZvdT'),
-  'Vicious':               thumb('1owgWJs4LK5LbeAatNoteFiDR8098WL4p'),
-  'Wrath':                 thumb('11kqLeFTnJBnI_xD7XTwyGqO9jNUW5u9D'),
-  'Greed':                 thumb('17MA5pEIilqcS4P6zUWEmfXL2XPllFpZS'),
-  'Gluttony':              thumb('1pDbQEqC8-uBVqhXg_sKryxY7Zt7oxoo3'),
-  'Spite':                 thumb('1AIo2qDXwM7BDKK8qTrsXaHIMWzemuTmd'),
-  'Fury':                  thumb('1LUh4aMxOinUlWeU_Kj3aI9yK2ocI4Ys-'),
-  'Taboo':                 thumb('1QVkncB1w0oxmRyxvEM6ISQwujo0G44Wt'),
-  'Pride':                 thumb('1SZtQvn7WZsTSmLP1j1GZCI1jcevIlH4Q'),
-  'Malevolent':            thumb('1YRhyoiWviPF6AmctQZWcl0ZscL_gHTtb'),
-  'Savage':                thumb('1i8FVPvZRVoVui_DRMVl33UzPKt2-BNlz'),
-  'Victorious':            thumb('1EE01vtaoBtp5UOBa9xuc3w-y0A1gqeLr'),
-  'Rage (Psychic)':        thumb('10cUS2bgYJJyRRc-N9kSu4EX0npjZV7Yi'),
-  'Malice':                thumb('18tnfntPuZ3IEZni5ky15Hun8pretdZ6e'),
-  // ── MERCENARY ──
-  'Cain':                  thumb('1ZPYFJZxaa0OETuaNmFquHHuKZKfcELiF'),
-  'Noah':                  thumb('1823eVcREGwuyulpf6uLpN6zLVeCDBrAH'),
-  'Mary':                  thumb('1LRU8OFZga8m05vAtlV16w8TbS-lww9Mo'),
-  'Abel':                  thumb('1feoQ6PD91UJ44LfUXvBgCw2ODu9TcysL'),
-  'Aaron':                 thumb('1RWC4bI6lKDrwOAiJ39CF1E3F1DrwCeRt'),
-  'Azrael':                thumb('1sjlJPB5BMm7CBOgbvf_BISx9jl9aoisA'),
-  'Gabriel':               thumb('1NjLDtmCT9yqeKxYlwWJJLa87m4nRgEWA'),
-  'Ariel':                 thumb('1hm8B16OFvoqgZKczlXUt7Hmxwr7zXCzA'),
-  'Lady Ariel':            thumb('1ZHDvCMyJJf_-wiIOz4kL2_TT1cLJg6lJ'),
-  'Raziel':                thumb('1lqgLobZBCqquVizcbK7SOrSEdbUHf8TA'),
-  'Engel':                 thumb('1Ilvy70IlPpFRAUoJNnii6DoSunY3vnX8'),
-  'Raphael':               thumb('1L3563yUl9gTh-dcZbav-xAH5OzyRjn9p'),
-  'Hannah':                thumb('1qzkR_FTpTUXaCI9VpSK9tctiBeQdePau'),
-  'Joseph':                thumb('1SXhmCJOsgiZbbg5nOnDkTyyivKYhmHcz'),
-  'Leah':                  thumb('1w0RrbAHYJ54lv_0SqNZctzT5wmRenuwD'),
-  'Eiljah':                thumb('16fE2tvShIL0a1bSLmd68fKDHewu7KOpg'),
-  // ── LIGHTNING ──
-  'Saturn':                thumb('1m9kMirNs2DtZPahyVECCzxsPYGJSla2e'),
-  'Titan':                 thumb('1XmxfHpdXSE2ht_xN2fzmxTXwVL3BIwwX'),
-  'Jupiter':               thumb('1OnQHBeCfx2IKmfhsxh-loci3JBFp5DQB'),
-  'Mars':                  thumb('1fvTj4z1kndMo4pLOwPe-l7nMwRRtukc6'),
-  'Mercury':               thumb('1pipVso36e7kxwpY8cQx_vwTdPZqb680e'),
-  'Venus':                 thumb('1XWLhPpt7bcu6AnHwrN4p-OrDSQNe1WUv'),
-  'Neptune':               thumb('1ay47Ol8sLHZBXYi2Z94VFO3JzxMRWY3q'),
-  'Luna':                  thumb('1hrHJvHb044ksIu_R9upTS0SsO5xBED3U'),
-  'Polaris':               thumb('1AcPi_Uc6EI2VDavTG863MeC2XX73-jr9'),
-  'Kepler':                thumb('1uMaxWUzFWzoE-DBn3-rRYQ-Im3t1JD-m'),
-  'Pegasi':                thumb('1s-Gu58x0rjFkeypt8wcDp8FPqEuzt42a'),
-  'Sirius':                thumb('1Z3EgxsMHtHX63F42fY3Lg15k5705n_62'),
-  // ── ATLANTEAN — Water ──
-  'Gadeirus':              thumb('16vM991NgVsDzjFauDTE5GeSK0bYzoJuh'),
-  'Smoker':                thumb('1EpcjG5oYAzwWeHBDL8WczxA2SmO9aE4t'),
-  'Atlas':                 thumb('1BOyZ9Ft8SnslTo9GFKkpA7ac0e8PVQe3'),
-  'Ampheres':              thumb('1MfVMpyi6BXwt9jrBdul9a5lNcTRdhDKZ'),
-  'Diaprepes':             thumb('1qGoLgvFfMtpXRMBIfCwZUV6URttM4YWw'),
-  'Azaes':                 thumb('1BwpQTfkilWtlJ1zIAjrrzB0CEtemtDBK'),
-  'Mestor':                thumb('1QDBoa4yLMTVH58VJOxxdqFsRhYDOvzBf'),
-  'Makaira':               thumb('1YoqXsjdqPpVHd0eLwrGgVW_LA7NLBu5V'),
-  'Topo':                  thumb('1AFFw8W5yQ9mLfojdBml38CUBK92hfEmL'),
-  'Cerdian':               thumb('1OmZslRmACGrDoMgOfucGXSsDmETzcc_j'),
-  'Ondine':                thumb('1-Q96y_a858Vnzw7aF6nEzeb1z39Nh4tt'),
-  'Cetea':                 thumb('1ZqXUQfnycptlIJm4AUH-0QRaDs5F6uYZ'),
-  'Triton':                thumb('103oyG4QvCpMvME1W_hKvw2dByGVhQ370'),
-  'Dagon':                 thumb('1jWw-PWCcc9qX5tSD-IwC83WN6CxZujZa'),
-  'Europa':                thumb('1h3VEPkTd9UWM76g4yoAT9PZUe4c_NKf4'),
-  // ── HOLY KNIGHT — Earth ──
-  'Carth':                 thumb('1xJDx9DwqvrBiK4De0GOcGpYzMyPdeA8r'),
-  'Heracles':              thumb('1sqti2795rfyAXUFoMUXNwIUzbn9uWSUZ'),
-  'Aion':                  thumb('191fDWJ3p3LbZ5HYKiiphL0aVuVvoXyjI'),
-  'Hermes':                thumb('1OhCwmwTV2CmkElILrRS64tpuGt7xgI91'),
-  'Ares':                  thumb('1Va5TLFg9XnVMF4tTmsqdP1spqj_4XZYh'),
-  // ── INFERNO — Fire ──
-  'Napu':                  thumb('1sZMmvxgM9l4n71_r0fBBSISIbgCwKfvR'),
-  'Komodo':                thumb('1qxorJk-dRf7W31WZHhGHrsgyy1sSxYXj'),
-  'Crow':                  thumb('1TtgvFrkyavb4X8vRLNmUPD4Mv4b8v_eP'),
-  'Leo':                   thumb('1jKP5oAVNaCG3IBQtLtyjlalrFPrYx5Py'),
-  // ── RAD — Dark ──
-  'Boron':                 thumb('1G1kD-DcRBlDGIud_s1O3so8tIH_7uNky'),
-  'Neon':                  thumb('1IdysfhHvQILhIjNsr6AqwTn-Ak4UeTeQ'),
-  'Silver':                thumb('1-T-PZ_0UdNnA2N1vgZAd_gtE-usk2maF'),
-  'Xenon':                 thumb('1lok8aBzLiYaHeBohJOvmonQg01LeyS4e'),
-  'Nitro':                 thumb('1tIkzV4DsXwvawCdKIR525bLUMud0_bU1'),
-};
+function cardImg(name){ return '/img?name=' + encodeURIComponent(name); }
 
 // ════════════════════════════════════════════
 //  CONFIG & STATE
@@ -796,19 +688,77 @@ function go(id) {
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
+// ── Deck builder integration helpers ─────────────────────────────────────────
+function getSavedDecks() {
+  return JSON.parse(localStorage.getItem('cd_saved_decks_v1') || '[]');
+}
+function getDeckPrimaryElement(deckMap, savedDeck) {
+  // First: use the saved deck's fieldCard element if available (most reliable)
+  if(savedDeck && savedDeck.fieldCard) {
+    const lib = JSON.parse(localStorage.getItem('cd_v10') || '[]');
+    const fc = lib.find(c=>c.name===savedDeck.fieldCard && c.type==='Field');
+    if(fc && fc.elements && fc.elements[0]) return fc.elements[0];
+  }
+  // Fallback: count elements from the deck cards (read from current library key)
+  const lib = JSON.parse(localStorage.getItem('cd_v10') || '[]');
+  const EL_MAP = {Water:'Water',Fire:'Fire',Earth:'Earth',Electricity:'Electricity',Psychic:'Psychic',Dark:'Dark'};
+  const nameToEl = {};
+  lib.forEach(c => { if(c.name && c.elements && c.elements[0]) nameToEl[c.name] = c.elements[0]; });
+  const elCount = {};
+  Object.entries(deckMap||{}).forEach(([name, count]) => {
+    const el = nameToEl[name];
+    if(el && EL_MAP[el]) elCount[el] = (elCount[el]||0) + count;
+  });
+  if(!Object.keys(elCount).length) return null;
+  return Object.entries(elCount).sort((a,b)=>b[1]-a[1])[0][0];
+}
+const EL_EMOJI = {Water:'💧',Fire:'🔥',Earth:'🌍',Electricity:'⚡',Dark:'🌑',Psychic:'🔮'};
+function previewDeck(prefix) {
+  const sel = document.getElementById(prefix+'-deck');
+  const prev = document.getElementById(prefix+'-preview');
+  if(!sel||!prev) return;
+  const name = sel.value;
+  if(!name){ prev.innerHTML=''; return; }
+  const d = getSavedDecks().find(x=>x.name===name);
+  if(!d){ prev.innerHTML=''; return; }
+  const el = getDeckPrimaryElement(d.deckMap, d);
+  const total = Object.values(d.deckMap).reduce((a,b)=>a+b,0);
+  const valid = total===40;
+  const fcLabel = d.fieldCard ? ` · 🏰 ${d.fieldCard}` : '';
+  prev.innerHTML = `<span style="color:${valid?'var(--green)':'#e87a5a'}">${EL_EMOJI[el]||'🃏'} ${el||'?'} deck</span> · <span style="color:${valid?'var(--green)':'#e87a5a'}">${total}/40 cards</span>${fcLabel}${valid?'':' ⚠ not 40 cards'}`;
+}
+function deckPickerHtml(prefix, label) {
+  const decks = getSavedDecks();
+  const editBtn = `<button onclick="window.open('/deck-builder.html','_blank')" style="margin-top:6px;background:transparent;border:1px solid var(--gold);color:var(--gold);padding:5px 12px;border-radius:7px;font-size:.75rem;font-weight:700;width:100%">🃏 ${decks.length?'Edit Decks':'Build a Deck'}</button>`;
+  if(!decks.length) return `<div class="fg"><label>${label}</label>
+    <div style="background:var(--bg2);border:2px dashed var(--gold);border-radius:10px;padding:16px;text-align:center;color:var(--text2);font-size:.85rem">
+      No saved decks found.<br><small>Build a 40-card deck first.</small>
+    </div>${editBtn}</div>`;
+  const opts = decks.map(d=>{
+    const total=Object.values(d.deckMap).reduce((a,b)=>a+b,0);
+    const el=getDeckPrimaryElement(d.deckMap, d);
+    return `<option value="${d.name}">${EL_EMOJI[el]||'🃏'} ${d.name} (${total} cards)</option>`;
+  }).join('');
+  return `<div class="fg"><label>${label}</label>
+    <select id="${prefix}-deck" onchange="previewDeck('${prefix}')" style="font-size:.95rem;padding:11px 13px">
+      <option value="">— Select your deck —</option>${opts}
+    </select>
+    <div id="${prefix}-preview" style="margin-top:6px;font-size:.75rem;color:var(--text2)"></div>
+    ${editBtn}</div>`;
+}
+
 function showLobby(mode) {
   go('lobby');
   const c = document.getElementById('lcard');
-  const EO = ['Water','Fire','Earth','Electricity','Psychic','Dark'].map(e=>`<option value="${e}">${e}</option>`).join('');
   if (mode==='create') {
     c.innerHTML=`<h2>⚔️ Create Game</h2>
-      <div class="fg"><label>Your Element</label><select id="ce">${EO}</select></div>
+      ${deckPickerHtml('p1','Your Deck')}
       <button class="abtn create" onclick="createGame()">Create Room</button>
       <button class="abtn back" onclick="go('menu')">← Back</button>
       <div id="ls" style="margin-top:14px"></div>`;
   } else if(mode==='join') {
     c.innerHTML=`<h2>🔗 Join Game</h2>
-      <div class="fg"><label>Your Element</label><select id="je">${EO}</select></div>
+      ${deckPickerHtml('p2','Your Deck')}
       <button class="abtn join" style="font-size:1rem;padding:14px;background:linear-gradient(135deg,#1a6a1a,#0a4a0a)" onclick="quickJoin()">⚡ Quick Join (auto-find open game)</button>
       <div style="text-align:center;margin:10px 0;color:var(--text2);font-size:.75rem">— or enter a Room Code manually —</div>
       <div class="fg"><label>Room Code</label><input id="jc" type="text" placeholder="Enter code" maxlength="6" style="text-transform:uppercase;letter-spacing:3px;font-size:1.2rem;font-weight:700"></div>
@@ -817,9 +767,9 @@ function showLobby(mode) {
       <div id="ls" style="margin-top:14px"></div>`;
   } else {
     c.innerHTML=`<h2>🤖 Solo Practice</h2>
-      <p style="font-size:.8rem;color:var(--text2);margin-bottom:14px">Play both sides to test your decks. Use the <strong style="color:var(--green)">Switch Player</strong> button during the game to take your opponent's turns.</p>
-      <div class="fg"><label>Player 1 Element</label><select id="se1">${EO}</select></div>
-      <div class="fg"><label>Player 2 Element</label><select id="se2">${EO}</select></div>
+      <p style="font-size:.8rem;color:var(--text2);margin-bottom:14px">Play both sides to test your decks. Use <strong style="color:var(--green)">Switch Player</strong> during the game.</p>
+      ${deckPickerHtml('se1','Player 1 Deck')}
+      ${deckPickerHtml('se2','Player 2 Deck')}
       <button class="abtn create" style="background:linear-gradient(135deg,#1a5a1a,#0a3a0a)" onclick="startSolo()">▶ Start Solo Practice</button>
       <button class="abtn back" onclick="go('menu')">← Back</button>
       <div id="ls" style="margin-top:14px"></div>`;
@@ -829,11 +779,33 @@ function showLobby(mode) {
 // ════════════════════════════════════════════
 //  LOBBY ACTIONS
 // ════════════════════════════════════════════
+function getSelectedDeckMap(prefix) {
+  const sel = document.getElementById(prefix+'-deck');
+  if(!sel || !sel.value) return null;
+  const d = getSavedDecks().find(x=>x.name===sel.value);
+  return d ? d.deckMap : null;
+}
+function getSelectedDeck(prefix) {
+  // Returns {deckMap, fieldCard} — the full saved deck object
+  const sel = document.getElementById(prefix+'-deck');
+  if(!sel || !sel.value) return null;
+  return getSavedDecks().find(x=>x.name===sel.value) || null;
+}
+function requireDeck(prefix, ls) {
+  const d = getSelectedDeck(prefix);
+  if(!d){ ls.innerHTML='<span style="color:var(--red)">⚠ Please select a deck first. Use the Deck Builder to build and save one.</span>'; return null; }
+  const total = Object.values(d.deckMap).reduce((a,b)=>a+b,0);
+  if(total!==40){ ls.innerHTML=`<span style="color:var(--red)">⚠ Your deck has ${total}/40 cards. Go to Deck Builder and complete it.</span>`; return null; }
+  return d; // return full deck object (has .deckMap and .fieldCard)
+}
+
 async function createGame() {
-  const el=document.getElementById('ce').value, ls=document.getElementById('ls');
+  const ls=document.getElementById('ls');
+  const deck=requireDeck('p1',ls); if(!deck) return;
+  const deckMap=deck.deckMap; const fieldCard=deck.fieldCard||null;
   ls.innerHTML='<span class="dot wait"></span> Creating room...';
   try {
-    const r=await api('/create','POST',{element:el});
+    const r=await api('/create','POST',{deckMap,fieldCard});
     S.roomId=r.roomId; S.secret=r.secret; S.pi=0;
     ls.innerHTML=`<div class="code-box">
       <div style="font-size:.78rem;color:var(--text2);margin-bottom:3px">Share with your opponent:</div>
@@ -846,23 +818,25 @@ async function createGame() {
 }
 async function joinGame() {
   const code=document.getElementById('jc').value.trim().toUpperCase();
-  const el=document.getElementById('je').value;
   const ls=document.getElementById('ls');
   if(!code){ls.innerHTML='<span style="color:var(--red)">Enter a code</span>';return;}
+  const deck=requireDeck('p2',ls); if(!deck) return;
+  const deckMap=deck.deckMap; const fieldCard=deck.fieldCard||null;
   ls.innerHTML='<span class="dot wait"></span> Joining...';
   try {
-    const r=await api('/join','POST',{roomId:code,element:el});
+    const r=await api('/join','POST',{roomId:code,deckMap,fieldCard});
     S.roomId=r.roomId; S.secret=r.secret; S.pi=1;
     ls.innerHTML='<span class="dot ok"></span> Joined! Loading game...';
     await loadCards(); startPoll();
   } catch(e){ ls.innerHTML=`<span style="color:var(--red)">Error: ${e.message}</span>`; }
 }
 async function quickJoin() {
-  const el=document.getElementById('je').value;
   const ls=document.getElementById('ls');
+  const deck=requireDeck('p2',ls); if(!deck) return;
+  const deckMap=deck.deckMap; const fieldCard=deck.fieldCard||null;
   ls.innerHTML='<span class="dot wait"></span> Looking for open game...';
   try {
-    const r=await fetch(SRV+'/quickjoin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({element:el})});
+    const r=await fetch(SRV+'/quickjoin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({deckMap,fieldCard})});
     const d=await r.json();
     if(!r.ok) throw new Error(d.error||'No open games found');
     S.roomId=d.roomId; S.secret=d.secret; S.pi=1;
@@ -872,12 +846,14 @@ async function quickJoin() {
 }
 
 async function startSolo() {
-  const el1=document.getElementById('se1').value;
-  const el2=document.getElementById('se2').value;
   const ls=document.getElementById('ls');
+  const deck1=requireDeck('se1',ls); if(!deck1) return;
+  const deck2=requireDeck('se2',ls); if(!deck2) return;
+  const deckMap1=deck1.deckMap; const fieldCard1=deck1.fieldCard||null;
+  const deckMap2=deck2.deckMap; const fieldCard2=deck2.fieldCard||null;
   ls.innerHTML='<span class="dot wait"></span> Starting...';
   try {
-    const r=await fetch(SRV+'/solo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({element1:el1,element2:el2})});
+    const r=await fetch(SRV+'/solo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({deckMap1,deckMap2,fieldCard1,fieldCard2})});
     if(!r.ok){ ls.innerHTML=`<span style="color:var(--red)">Server error ${r.status} — please <strong>restart server.py</strong> and refresh.</span>`; return; }
     const d=await r.json();
     if(!d.secrets){ ls.innerHTML=`<span style="color:var(--red)">Bad response from server — restart server.py.</span>`; return; }
@@ -891,14 +867,14 @@ async function startSolo() {
     startPoll();
   } catch(e){ ls.innerHTML=`<span style="color:var(--red)">Error: ${e.message}<br><small>Make sure server.py is running (restart it if needed).</small></span>`; }
 }
-function switchSoloPlayer() {
+function switchSoloPlayer(silent=false) {
   if(!soloMode)return;
   const next=1-S.pi;
   S.pi=next;
   S.secret=soloSecrets[String(next)];
   S.sel=null; S.atkMode=false;
   renderGame();
-  toast(`Now controlling Player ${next+1}`);
+  if(!silent) toast(`Now controlling Player ${next+1}`);
 }
 
 // ════════════════════════════════════════════
@@ -919,7 +895,7 @@ async function doPoll() {
     if(S.game.started) go('game');
     renderGame();
     if(S.game.winner!=null) showWin(S.game.winner);
-  } catch(e){}
+  } catch(e){console.error('[Poll error]', e);}
 }
 
 // ════════════════════════════════════════════
@@ -927,6 +903,8 @@ async function doPoll() {
 // ════════════════════════════════════════════
 const EL_SYM = {Water:'元',Fire:'火',Earth:'土',Electricity:'雷',Psychic:'念',Dark:'闇'};
 const EL_CLS = {Water:'el-Water',Fire:'el-Fire',Earth:'el-Earth',Electricity:'el-Electricity',Psychic:'el-Psychic',Dark:'el-Dark'};
+// Google Drive thumbnail helper
+function thumb(id){ return `https://drive.google.com/thumbnail?id=${id}&sz=w400`; }
 // Element orb artwork images (Drive thumbnails)
 const EL_IMG = {
   Water:       thumb('1mk70M5i_B5GtUpp5W1frGTM7DD-HWRdw'),
@@ -942,6 +920,9 @@ const EL_IMG = {
 // ════════════════════════════════════════════
 function renderGame() {
   if(!S.game)return;
+  try { _renderGame(); } catch(e){ console.error('[renderGame crash]', e); }
+}
+function _renderGame() {
   const g=S.game, me=g.players[S.pi], op=g.players[1-S.pi];
   const myTurn=g.activePlayer===S.pi;
 
@@ -1119,13 +1100,15 @@ function renderStorage(id, storage, isMe) {
   }
   el.innerHTML=storage.map(inst=>{
     const d=S.cards[inst.cardId]||{name:inst.cardId,color:'#333',art:'?'};
-    const imgUrl=CARD_IMGS[d.name]||'';
+    const imgUrl=cardImg(d.name)||'';
     const isCharacter = d.type === 'Character';
     const canBlock = isMe && isCharacter && S.game?.pendingAttack && S.game.pendingAttack.attackerPi !== S.pi;
     const hpDisplay = isCharacter ? `❤${inst.currentHp}` : `<span style="color:#aaa;font-size:.4rem">No Block</span>`;
+    // Click: block if blocking is available, otherwise open card detail popup
+    const clickAction = canBlock ? `blockWithStorage('${inst.instanceId}')` : `openCardDetail('${inst.cardId}')`;
     return `<div class="storage-chip alive" title="${d.name}${isCharacter?' ❤'+inst.currentHp:' (cannot block)'}"
-      style="background:${d.color||'#8a0a0a'};cursor:${canBlock?'pointer':'default'};position:relative;overflow:hidden;${canBlock?'border-color:#ffe060;box-shadow:0 0 8px rgba(255,220,0,.6)':''}${!isCharacter?';opacity:.7;border-style:dashed':''}"
-      onclick="${canBlock?`blockWithStorage('${inst.instanceId}')`:''}" >
+      style="background:${d.color||'#8a0a0a'};cursor:pointer;position:relative;overflow:hidden;${canBlock?'border-color:#ffe060;box-shadow:0 0 8px rgba(255,220,0,.6)':''}${!isCharacter?';opacity:.7;border-style:dashed':''}"
+      onclick="${clickAction}" >
       ${imgUrl?`<img src="${imgUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.65" onerror="this.style.display='none'">`:'' }
       <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:1px">
         <div style="font-size:.38rem;font-weight:700;color:#fff;text-align:center;line-height:1.1;white-space:nowrap;overflow:hidden;max-width:30px;text-overflow:ellipsis">${d.name.slice(0,7)}</div>
@@ -1151,7 +1134,7 @@ function cardHTML(cardId, inst, opts={}) {
     opts.tgt?'tgt':''
   ].filter(Boolean).join(' ');
   const click=opts.click?`onclick="${opts.click}('${iid||cardId}')"`:'' ;
-  const imgUrl = CARD_IMGS[d.name] || '';
+  const imgUrl = cardImg(d.name) || '';
   const imgTag = imgUrl ? `<img class="card-img" src="${imgUrl}" alt="${d.name}" onerror="this.style.display='none'">` : '';
   const artContent = imgUrl ? '' : `<div class="card-art">${d.art||'?'}</div>`;
   // justDeployed: show a green "NEW" badge — character looks ready but can't attack this turn
@@ -1184,28 +1167,38 @@ function renderOppField(field) {
 function renderMyField(field) {
   const el=document.getElementById('my-field'); if(!el)return;
   if(!field.length){el.innerHTML='<span class="empty-field">— Empty Field —</span>';return;}
-  const myTurn=S.game.activePlayer===S.pi;
-  el.innerHTML=field.map(inst=>cardHTML(inst.cardId,inst,{
-    sel:S.sel?.iid===inst.instanceId,
-    click:myTurn?'selField':null
-  })).join('');
+  el.innerHTML=field.map(inst=>{
+    const cd=S.cards[inst.cardId];
+    const zeroAtk=S.atkMode&&cd&&(cd.atk===0||cd.atk===undefined);
+    let html=cardHTML(inst.cardId,inst,{sel:S.sel?.iid===inst.instanceId,click:'selField'});
+    if(zeroAtk){
+      html=`<div style="position:relative;display:inline-block">
+        ${html}
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,.55);border-radius:6px;display:flex;align-items:center;justify-content:center;pointer-events:none">
+          <span style="color:#f88;font-size:.45rem;font-weight:900;letter-spacing:1px;text-shadow:0 0 4px #000">0 ATK</span>
+        </div></div>`;
+    }
+    return html;
+  }).join('');
 }
 
 function renderOneFc(id, fc) {
   const el=document.getElementById(id); if(!el)return;
   if(!fc){
     el.innerHTML='No<br>Field';
-    el.style.cssText='background:rgba(0,0,0,0.3);border:1px dashed rgba(200,160,50,0.3);';
+    el.style.cssText='background:rgba(0,0,0,0.3);border:1px dashed rgba(200,160,50,0.3);cursor:default;';
     return;
   }
   const d=S.cards[fc.cardId];
   if(!d){el.innerHTML='?';return;}
-  const imgUrl = CARD_IMGS[d.name]||'';
+  const imgUrl = cardImg(d.name)||'';
   const hp = fc.hp ?? 4;
   el.style.background = d.color||'#333';
   el.style.border = `2px solid ${fc.charged?'var(--gold)':'#555'}`;
   el.style.position = 'relative';
   el.style.overflow = 'hidden';
+  el.style.cursor = 'pointer';
+  el.onclick = () => openCardDetail(fc.cardId);
   el.innerHTML=`
     ${imgUrl?`<img src="${imgUrl}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:4px" onerror="this.style.display='none'">`:''}
     <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.95) 0%,rgba(0,0,0,.4) 60%,rgba(0,0,0,.1) 100%);border-radius:4px"></div>
@@ -1215,10 +1208,24 @@ function renderOneFc(id, fc) {
       <div style="font-size:.38rem;color:${fc.charged?'#ffe08a':'#888'}">${fc.charged?'⚡ Ready':'💤 Tired'} ❤${hp}</div>
     </div>`;
 }
+// Fallback field card lookup from element name
+const STARTING_FC_BY_EL={Water:'fl06',Psychic:'fl01',Fire:'fl07',Electricity:'fl05',Dark:'fl04',Earth:'fl03'};
 function renderFieldCard(fieldCards) {
   if(!fieldCards) fieldCards=[null,null];
-  renderOneFc('my-fc-display',  fieldCards[S.pi]);
-  renderOneFc('opp-fc-display', fieldCards[1-S.pi]);
+  const g=S.game;
+  // Defensive: if a slot is null/undefined, reconstruct from player element
+  const fixFc=(fc,pi)=>{
+    if(fc && fc.cardId) return fc;
+    const el=g?.players?.[pi]?.element;
+    const cid=el?STARTING_FC_BY_EL[el]:null;
+    if(!cid) return null;
+    console.warn('[renderFieldCard] fc was null for pi='+pi+', recovering from element='+el+' → '+cid);
+    return {cardId:cid, charged:true, hp:g.players[pi].lives??5, maxHp:g.players[pi].lives??5};
+  };
+  const myFc = fixFc(fieldCards[S.pi], S.pi);
+  const opFc = fixFc(fieldCards[1-S.pi], 1-S.pi);
+  renderOneFc('my-fc-display',  myFc);
+  renderOneFc('opp-fc-display', opFc);
 }
 
 function renderHand(hand) {
@@ -1365,23 +1372,40 @@ function toggleStoreMode() {
 function blockWithStorage(storageIid) {
   if(!S.game?.pendingAttack) return;
   if(S.game.pendingAttack.attackerPi===S.pi) return;
-  doAct({action:'resolveAttack',block:true,storageIid});
+  const attackerPi=S.game.pendingAttack.attackerPi;
+  doAct({action:'resolveAttack',block:true,storageIid}).then(ok=>{
+    if(ok && soloMode && S.pi!==attackerPi) switchSoloPlayer(true);
+  });
 }
 function passDamage() {
-  doAct({action:'resolveAttack',block:false});
+  const attackerPi=S.game?.pendingAttack?.attackerPi;
+  doAct({action:'resolveAttack',block:false}).then(ok=>{
+    if(ok && soloMode && attackerPi!=null && S.pi!==attackerPi) switchSoloPlayer(true);
+  });
 }
 function selField(iid) {
-  if(S.atkMode)return;
   const me=S.game.players[S.pi];
   const inst=me.field.find(c=>c.instanceId===iid);
   if(!inst){return;}
-  if(!inst.charged){toast('Character is discharged!');return;}
-  S.sel={iid,cardId:inst.cardId,source:'field'}; renderGame();
+  const myTurn=S.game.activePlayer===S.pi;
+  if(S.atkMode && myTurn) {
+    // In attack mode: select this character as the attacker
+    if(!inst.charged){toast('Character is discharged — cannot attack!');return;}
+    const cd=S.cards[inst.cardId];
+    if(cd && cd.atk===0){toast(`${cd.name} has 0 ATK — cannot attack!`);return;}
+    S.sel={iid,cardId:inst.cardId,source:'field'}; renderGame();
+  } else if(S.sel?.iid===iid && S.sel?.source==='field') {
+    // Second click on already-selected card → open full detail popup
+    openCardDetail(inst.cardId);
+  } else {
+    // First click → select the card (shows ⚔ Attack button)
+    S.sel={iid,cardId:inst.cardId,source:'field'}; renderGame();
+  }
 }
 function showOppCard(iid) {
   const op=S.game.players[1-S.pi];
   const inst=op.field.find(c=>c.instanceId===iid);
-  if(inst) showCardOv(inst.cardId,false);
+  if(inst) openCardDetail(inst.cardId);
 }
 function clearSel(){ S.sel=null; S.atkMode=false; storeMode=false; renderGame(); }
 
@@ -1440,14 +1464,20 @@ function startAtk(){
 }
 function atkTarget(iid){
   if(!S.atkMode||!S.sel)return;
-  doAct({action:'attack',attackerIid:S.sel.iid,targetType:'character',targetRef:iid});
+  const attackerIid=S.sel.iid;
   S.atkMode=false; S.sel=null;
+  doAct({action:'attack',attackerIid,targetType:'character',targetRef:iid}).then(ok=>{
+    if(ok && soloMode && S.game?.pendingAttack) switchSoloPlayer(true);
+  });
 }
 
 function clickFieldCard(){
   if(S.atkMode&&S.sel){
-    doAct({action:'attack',attackerIid:S.sel.iid,targetType:'field'});
+    const attackerIid=S.sel.iid;
     S.atkMode=false; S.sel=null;
+    doAct({action:'attack',attackerIid,targetType:'field'}).then(ok=>{
+      if(ok && soloMode && S.game?.pendingAttack) switchSoloPlayer(true);
+    });
   }
 }
 async function doPlay(){
@@ -1469,19 +1499,24 @@ function showCardOv(cardId, canPlay) {
   const d=S.cards[cardId]; if(!d)return;
   document.getElementById('ov-name').textContent=d.name;
   const artEl=document.getElementById('ov-art');
-  const imgUrl = CARD_IMGS[d.name]||'';
+  const imgUrl = cardImg(d.name)||'';
   if(imgUrl){
     artEl.innerHTML=`<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:6px" onerror="this.innerHTML='${d.art||'?'}'"><span class="cd-art-fallback" style="display:none">${d.art||'?'}</span>`;
   } else {
     artEl.textContent=d.art||'?';
     artEl.style.background=d.color||'#333';
   }
-  document.getElementById('ov-type').textContent=`${d.type}${d.subtype?' — '+d.subtype:''} | ${d.element}`;
+  const elOrbUrl = EL_IMG[d.element]||'';
+  const elOrbTag = elOrbUrl ? `<img src="${elOrbUrl}" style="width:20px;height:20px;border-radius:50%;vertical-align:middle;margin-right:4px;box-shadow:0 0 4px rgba(255,255,255,.3)" onerror="this.style.display='none'">` : '';
+  document.getElementById('ov-type').innerHTML=`${d.type}${d.subtype?' — '+d.subtype:''} | ${elOrbTag}${d.element}`;
   const kws=d.keywords||[];
   let kh=''; if(d.rarity==='SR')kh+=`<span class="kwtag" style="background:var(--gold);color:#000">SR</span> `;
   kws.forEach(k=>{const m={Defender:'#2980b9','Only Once':'#8e44ad',Early:'#27ae60'};kh+=`<span class="kwtag" style="background:${m[k]||'#555'}">${k}</span> `;});
   document.getElementById('ov-kws').innerHTML=kh;
-  document.getElementById('ov-cost').innerHTML=`<span style="color:var(--gold)">Cost:</span> ${d.cost}`;
+  const costStr = d.cost_elements
+    ? Object.entries(d.cost_elements).map(([e,n])=>`${n} ${e}`).join(' + ')
+    : (d.cost > 0 ? `${d.cost} ${d.element||''}` : '0');
+  document.getElementById('ov-cost').innerHTML=`<span style="color:var(--gold)">Cost:</span> ${costStr}`;
   document.getElementById('ov-atk').innerHTML=d.atk!==undefined?`<span style="color:#e74c3c">⚔:</span> ${d.atk}`:'';
   document.getElementById('ov-hp').innerHTML=d.hp!==undefined?`<span style="color:#2ecc71">❤:</span> ${d.hp}`:'';
   document.getElementById('ov-eff').textContent=d.effect||'No effect.';
@@ -1521,11 +1556,14 @@ function closeTrashOv(e){
 function openCardDetail(cardId) {
   const d = S.cards[cardId];
   if(!d) return;
-  const imgUrl = CARD_IMGS[d.name] || '';
+  const imgUrl = cardImg(d.name) || '';
   const elColor = {'Water':'#1a5a8a','Fire':'#8a2a00','Earth':'#4a6a1a','Electricity':'#6a6a00','Psychic':'#5a1a8a','Dark':'#2a2a4a','Any':'#444','Mercenary':'#5a3a1a'}[d.element]||'#333';
   const typeIcon = {'Character':'⚔️','Event':'✨','Trigger':'⚡','Field':'🏰'}[d.type]||'?';
+  const detailElOrbUrl = EL_IMG[d.element]||'';
+  const detailElOrb = detailElOrbUrl ? `<img src="${detailElOrbUrl}" style="width:18px;height:18px;border-radius:50%;vertical-align:middle;margin-right:3px;box-shadow:0 0 4px rgba(255,255,255,.3)" onerror="this.style.display='none'">` : '';
   let statsRow = '';
   if(d.type==='Character') statsRow=`<div style="display:flex;gap:10px;margin-top:6px"><span style="color:#f88">❤ HP: ${d.hp||1}</span><span style="color:#fc8">⚔ ATK: ${d.atk||0}</span></div>`;
+  if(d.type==='Field') statsRow=`<div style="display:flex;gap:10px;margin-top:6px"><span style="color:#f88">❤ Lives: ${d.hp||5}</span><span style="color:#adf">🃏 Slots: ${d.slots||4}</span></div>`;
   let costRow = '';
   if(d.cost>0){
     const costEls = d.cost_elements ? Object.entries(d.cost_elements).map(([e,n])=>`${n} ${e}`).join(' + ') : `${d.cost} ${d.element}`;
@@ -1534,7 +1572,7 @@ function openCardDetail(cardId) {
   document.getElementById('card-detail-inner').innerHTML=`
     ${imgUrl?`<img src="${imgUrl}" style="width:140px;height:195px;object-fit:cover;border-radius:8px;flex-shrink:0;border:2px solid ${elColor}" onerror="this.style.display='none'">` : `<div style="width:140px;height:195px;border-radius:8px;background:${elColor};display:flex;align-items:center;justify-content:center;font-size:2.5rem;flex-shrink:0">${d.art||typeIcon}</div>`}
     <div style="flex:1;background:rgba(0,0,0,.85);border-radius:8px;padding:12px;border:1px solid ${elColor}">
-      <div style="font-size:.65rem;color:#aaa;margin-bottom:2px">${typeIcon} ${d.type} · ${d.element||''} · ${d.rarity||''}</div>
+      <div style="font-size:.65rem;color:#aaa;margin-bottom:2px">${typeIcon} ${d.type} · ${detailElOrb}${d.element||''} · ${d.rarity||''}</div>
       <div style="font-size:1rem;font-weight:700;color:#fff;margin-bottom:4px">${d.name}</div>
       ${statsRow}
       ${costRow}
